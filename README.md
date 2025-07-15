@@ -34,4 +34,33 @@ docker compose up -d        # or: npm install && npm start
    - OPTIONAL: protect with basic‑auth / reverse‑proxy in production.
 
 Everything is self‑contained—no placeholders.
-# Lite-Ad-Server
+
+## 🤖 AI Development with OpenAI Codex
+
+This project is **fully compatible** with OpenAI Codex CLI for AI-powered development:
+
+```bash
+# Install Codex CLI
+npm install -g @openai/codex
+
+# Start AI development
+codex "implement JWT authentication for admin dashboard"
+```
+
+**Features:**
+- ✅ **Pre-configured AGENTS.md** - Comprehensive AI guidance
+- ✅ **Codex configuration** - Optimized `.codex-config.toml`
+- ✅ **Multiple profiles** - Dev, auto, explore, test modes
+- ✅ **Quality checks** - Automated linting, testing, Docker builds
+- ✅ **Security sandbox** - Safe AI code execution
+
+📖 **See [CODEX_SETUP.md](./CODEX_SETUP.md) for detailed setup instructions**
+
+## 📋 Next Features
+
+Check [NEXT_FEATURES.md](./NEXT_FEATURES.md) for upcoming enhancements:
+- JWT Authentication, Custom Creatives, Real-time Analytics
+- A/B Testing, Fraud Detection, Advanced Reporting
+- Geographic Targeting, Multi-tenant Support
+
+---

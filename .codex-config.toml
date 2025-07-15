@@ -1,0 +1,243 @@
+# OpenAI Codex CLI Configuration for Lite Ad Server
+# Documentation: https://github.com/openai/codex/blob/main/codex-rs/config.md
+
+# ==============================================================================
+# CORE CONFIGURATION
+# ==============================================================================
+
+# Default model for code generation (use latest reasoning models)
+model = "o4-mini"
+
+# Model provider configuration (defaults to OpenAI)
+model_provider = "openai"
+
+# Approval policy for command execution
+approval_policy = "untrusted"  # Options: always, untrusted, on-failure, never
+
+# Sandbox mode for security
+sandbox_mode = "workspace-write"  # Options: read-only, workspace-write, danger-full-access
+
+# ==============================================================================
+# PROJECT DOCUMENTATION
+# ==============================================================================
+
+# Maximum bytes to include from AGENTS.md files (32KB default)
+project_doc_max_bytes = 32768
+
+# Include project documentation in first turn
+include_project_docs = true
+
+# ==============================================================================
+# SECURITY SETTINGS
+# ==============================================================================
+
+# Disable response storage for Zero Data Retention compliance
+disable_response_storage = false
+
+# Trust policy for commands
+[approval_policy_config]
+# Commands that don't require approval (trusted commands)
+trusted_commands = [
+    "cat", "ls", "pwd", "echo", "grep", "find", "head", "tail", "wc",
+    "node", "npm", "npx", "git", "docker", "curl", "wget"
+]
+
+# ==============================================================================
+# SANDBOX CONFIGURATION
+# ==============================================================================
+
+[sandbox_workspace_write]
+# Allow writing only within project directory
+writable_roots = [
+    ".",  # Current directory
+    "/tmp"  # Temporary files
+]
+
+# Network access (disabled for security)
+allow_network = false
+
+# ==============================================================================
+# DEVELOPMENT PROFILES
+# ==============================================================================
+
+# Profile for safe exploration
+[profiles.explore]
+model = "o4-mini"
+approval_policy = "never"
+sandbox_mode = "read-only"
+
+# Profile for full automation
+[profiles.auto]
+model = "o3"
+approval_policy = "on-failure"
+sandbox_mode = "workspace-write"
+
+# Profile for development with oversight
+[profiles.dev]
+model = "o4-mini"
+approval_policy = "untrusted"
+sandbox_mode = "workspace-write"
+
+# Profile for testing
+[profiles.test]
+model = "o4-mini"
+approval_policy = "always"
+sandbox_mode = "read-only"
+
+# ==============================================================================
+# PROVIDER CONFIGURATIONS
+# ==============================================================================
+
+# Primary OpenAI provider
+[model_providers.openai]
+name = "OpenAI"
+base_url = "https://api.openai.com/v1"
+env_key = "OPENAI_API_KEY"
+
+# Alternative providers (uncomment and configure as needed)
+
+# [model_providers.azure]
+# name = "Azure OpenAI"
+# base_url = "https://YOUR_PROJECT.openai.azure.com/openai"
+# env_key = "AZURE_OPENAI_API_KEY"
+# wire_api = "responses"
+# query_params = { api-version = "2025-04-01-preview" }
+
+# [model_providers.ollama]
+# name = "Ollama Local"
+# base_url = "http://localhost:11434/v1"
+
+# ==============================================================================
+# TUI (Terminal UI) SETTINGS
+# ==============================================================================
+
+[tui]
+# Disable mouse capture for better terminal compatibility
+disable_mouse_capture = false
+
+# Syntax highlighting theme
+theme = "dark"
+
+# ==============================================================================
+# PERFORMANCE SETTINGS
+# ==============================================================================
+
+# Request timeout in seconds
+request_timeout = 300
+
+# Maximum tokens for responses
+max_tokens = 4096
+
+# Temperature for code generation (lower = more deterministic)
+temperature = 0.1
+
+# ==============================================================================
+# LOGGING CONFIGURATION
+# ==============================================================================
+
+# Log level (error, warn, info, debug, trace)
+log_level = "info"
+
+# Log file rotation
+[logging]
+max_file_size = "10MB"
+max_files = 5
+
+# ==============================================================================
+# MODEL CONTEXT PROTOCOL (MCP) SERVERS
+# ==============================================================================
+
+# Example MCP server configurations (uncomment and configure as needed)
+
+# [mcp_servers.filesystem]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+
+# [mcp_servers.sqlite]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-sqlite", "data/ads.db"]
+
+# [mcp_servers.github]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-github"]
+# env = { GITHUB_PERSONAL_ACCESS_TOKEN = "your-token" }
+
+# ==============================================================================
+# PROJECT-SPECIFIC SETTINGS
+# ==============================================================================
+
+# Custom instructions for this project
+[project]
+name = "lite-ad-server"
+description = "Production-ready lightweight Ad Server with Google Ad Manager integration"
+tech_stack = ["Node.js", "Express", "SQLite", "Docker"]
+
+# Project-specific preferences
+[project.preferences]
+# Prefer async/await over promises
+use_async_await = true
+
+# Use prepared statements for database operations
+use_prepared_statements = true
+
+# Follow Express.js best practices
+follow_express_patterns = true
+
+# Maintain backward compatibility
+maintain_compatibility = true
+
+# ==============================================================================
+# ENVIRONMENT-SPECIFIC OVERRIDES
+# ==============================================================================
+
+# Development environment
+[env.development]
+approval_policy = "untrusted"
+sandbox_mode = "workspace-write"
+log_level = "debug"
+
+# Production environment (stricter controls)
+[env.production]
+approval_policy = "always"
+sandbox_mode = "read-only"
+log_level = "warn"
+disable_response_storage = true
+
+# Testing environment
+[env.test]
+approval_policy = "never"
+sandbox_mode = "read-only"
+log_level = "error"
+
+# ==============================================================================
+# COMMAND ALIASES
+# ==============================================================================
+
+[aliases]
+# Quick development commands
+dev = "npm run dev"
+test = "npm test"
+lint = "npm run lint"
+build = "docker build -t lite-ad-server ."
+deploy = "docker-compose up --build -d"
+
+# Quality checks
+check = "npm run lint && npm test"
+full-check = "npm run lint && npm test && docker build -t lite-ad-server ."
+
+# Database operations
+db-backup = "cp data/ads.db data/ads.db.backup"
+db-restore = "cp data/ads.db.backup data/ads.db"
+
+# ==============================================================================
+# EXPERIMENTAL FEATURES
+# ==============================================================================
+
+# Enable experimental features (use with caution)
+experimental_features = false
+
+# Beta feature flags
+[experimental]
+enhanced_reasoning = true
+multi_step_planning = true
+code_review_mode = false 
