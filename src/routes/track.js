@@ -2,6 +2,32 @@ const express = require('express');
 const router = express.Router();
 const { statements } = require('../config');
 
+// In-memory aggregation of events per minute
+const aggregates = new Map();
+
+const updateAggregates = (event, timestamp) => {
+  const minute = timestamp.slice(0, 16); // YYYY-MM-DDTHH:MM
+  if (!aggregates.has(minute)) {
+    aggregates.set(minute, { impressions: 0, clicks: 0 });
+    // keep only last 60 minutes
+    const keys = Array.from(aggregates.keys()).sort();
+    if (keys.length > 60) {
+      for (const k of keys.slice(0, keys.length - 60)) aggregates.delete(k);
+    }
+  }
+
+  const counts = aggregates.get(minute);
+  if (event === 'impression') counts.impressions++;
+  if (event === 'click') counts.clicks++;
+};
+
+const getAggregates = () => {
+  return Array.from(aggregates.entries()).map(([minute, counts]) => ({
+    minute,
+    ...counts
+  }));
+};
+
 // Validation helpers
 const validateTrackingData = (data) => {
   const { slot, event } = data;
@@ -58,6 +84,13 @@ router.post('/', (req, res) => {
 
       console.log(`📊 Tracked ${event} for slot: ${slot} (ID: ${result.lastInsertRowid})`);
 
+      updateAggregates(event.toLowerCase(), clientInfo.timestamp);
+      const io = req.app.locals.io;
+      if (io) {
+        io.emit('analytics', { event: event.toLowerCase(), slot, timestamp: clientInfo.timestamp });
+        io.emit('aggregate', getAggregates().slice(-1)[0]);
+      }
+
       res.json({
         success: true,
         id: result.lastInsertRowid,
@@ -97,6 +130,12 @@ router.get('/pixel', (req, res) => {
             clientInfo.ip,
             clientInfo.referer
           );
+          updateAggregates('impression', clientInfo.timestamp);
+          const io = req.app.locals.io;
+          if (io) {
+            io.emit('analytics', { event: 'impression', slot, timestamp: clientInfo.timestamp });
+            io.emit('aggregate', getAggregates().slice(-1)[0]);
+          }
           console.log(`📊 Pixel tracked impression for slot: ${slot}`);
         } catch (dbError) {
           console.error('Database error in pixel tracking:', dbError);
@@ -164,6 +203,12 @@ router.post('/batch', (req, res) => {
           clientInfo.referer
         );
 
+        updateAggregates(eventData.event.toLowerCase(), clientInfo.timestamp);
+        const io = req.app.locals.io;
+        if (io) {
+          io.emit('analytics', { event: eventData.event.toLowerCase(), slot: eventData.slot, timestamp: clientInfo.timestamp });
+        }
+
         results.push({
           index: i,
           id: result.lastInsertRowid,
@@ -176,6 +221,10 @@ router.post('/batch', (req, res) => {
     }
 
     console.log(`📊 Batch tracked ${results.length} events, ${errors.length} errors`);
+    const io = req.app.locals.io;
+    if (io) {
+      io.emit('aggregate', getAggregates().slice(-1)[0]);
+    }
 
     res.json({
       success: true,
@@ -195,3 +244,4 @@ router.post('/batch', (req, res) => {
 });
 
 module.exports = router;
+module.exports.getAggregates = getAggregates;

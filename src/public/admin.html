@@ -5,6 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🚀 Lite Ad Server - Analytics Dashboard</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * {
       margin: 0;
@@ -311,6 +313,8 @@
         <div class="metric-label">Active Slots</div>
       </div>
     </div>
+
+    <canvas id="realtimeChart" height="150"></canvas>
     
     <div class="dashboard">
       <div class="main-content">
@@ -353,13 +357,67 @@
   <script>
     let isOnline = true;
     let refreshInterval;
+    let chart;
+    const socket = io({ transports: ['websocket'], reconnectionAttempts: 5 });
+
+    const chartData = {
+      labels: [],
+      datasets: [
+        { label: 'Impressions', data: [], borderColor: '#667eea', tension: 0.3 },
+        { label: 'Clicks', data: [], borderColor: '#764ba2', tension: 0.3 }
+      ]
+    };
     
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', function() {
+      setupChart();
       loadDashboard();
       startAutoRefresh();
     });
+
+    socket.on('connect', () => updateConnectionStatus(true));
+    socket.on('disconnect', () => updateConnectionStatus(false));
+    socket.on('aggregate-init', data => {
+      chartData.labels = data.map(d => d.minute.slice(11));
+      chartData.datasets[0].data = data.map(d => d.impressions);
+      chartData.datasets[1].data = data.map(d => d.clicks);
+      chart.update();
+    });
+    socket.on('aggregate', agg => {
+      if (!agg) return;
+      const label = agg.minute.slice(11);
+      const idx = chartData.labels.indexOf(label);
+      if (idx === -1) {
+        chartData.labels.push(label);
+        chartData.datasets[0].data.push(agg.impressions);
+        chartData.datasets[1].data.push(agg.clicks);
+      } else {
+        chartData.datasets[0].data[idx] = agg.impressions;
+        chartData.datasets[1].data[idx] = agg.clicks;
+      }
+      if (chartData.labels.length > 60) {
+        chartData.labels.shift();
+        chartData.datasets.forEach(ds => ds.data.shift());
+      }
+      chart.update();
+    });
     
+    function setupChart() {
+      const ctx = document.getElementById('realtimeChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+          animation: false,
+          responsive: true,
+          scales: {
+            x: { display: true },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
     async function loadDashboard() {
       try {
         updateConnectionStatus(true);
