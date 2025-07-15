@@ -1,0 +1,44 @@
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Testing
+test/
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Development files
+.git
+.gitignore
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+AGENTS.md
+*.md
+
+# Development only
+docker-compose.yml
+Dockerfile.dev 

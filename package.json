@@ -1,0 +1,54 @@
+
+{
+  "name": "lite-ad-server",
+  "version": "1.0.0",
+  "description": "Lightweight Ad Server linked to Google Ad Manager",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test test/**/*.test.js",
+    "lint": "eslint src --max-warnings=0",
+    "lint:fix": "eslint src --fix",
+    "docker:build": "docker build -t lite-ad-server:latest .",
+    "docker:run": "docker compose up --build",
+    "prestart": "npm run lint"
+  },
+  "keywords": ["ad-server", "google-ad-manager", "nodejs", "express"],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.0",
+    "better-sqlite3": "^9.0.0",
+    "dotenv": "^16.4.0",
+    "morgan": "^1.10.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-import": "^2.29.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "eslintConfig": {
+    "extends": ["standard"],
+    "env": {
+      "node": true,
+      "es2022": true
+    },
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module"
+    },
+    "rules": {
+      "no-console": "off",
+      "semi": ["error", "always"]
+    }
+  }
+}
