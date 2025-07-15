@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const adRoutes = require('./routes/ad');
 const trackRoutes = require('./routes/track');
-const adminRoutes = require('./routes/admin');
+const { adminRouter, authRouter } = require('./routes/admin');
 
 const app = express();
 
@@ -83,7 +83,8 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/ad', adRoutes);
 app.use('/api/track', trackRoutes);
-app.use('/admin', adminRoutes);
+app.use('/admin', adminRouter);
+app.use('/api/auth', authRouter);
 
 // 404 handler
 app.use((req, res) => {

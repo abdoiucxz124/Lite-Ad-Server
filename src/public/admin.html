@@ -24,6 +24,57 @@
       margin: 0 auto;
       padding: 20px;
     }
+
+    .login-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      width: 320px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .login-box h2 {
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .login-box button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .login-box .error {
+      color: #dc3545;
+      text-align: center;
+      margin-top: 10px;
+    }
     
     .header {
       background: rgba(255, 255, 255, 0.95);
@@ -269,6 +320,15 @@
   </style>
 </head>
 <body>
+  <div id="loginModal" class="login-modal" style="display:none;">
+    <form id="loginForm" class="login-box">
+      <h2>Admin Login</h2>
+      <input type="text" id="loginUsername" placeholder="Username" required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
+      <button type="submit">Login</button>
+      <div id="loginError" class="error" style="display:none;"></div>
+    </form>
+  </div>
   <div class="container">
     <div class="header">
       <h1>🚀 Lite Ad Server</h1>
@@ -354,10 +414,12 @@
     let isOnline = true;
     let refreshInterval;
     
-    // Initialize dashboard
+    // Initialize dashboard after checking auth
     document.addEventListener('DOMContentLoaded', function() {
-      loadDashboard();
-      startAutoRefresh();
+      if (checkAuth()) {
+        loadDashboard();
+        startAutoRefresh();
+      }
     });
     
     async function loadDashboard() {
@@ -375,8 +437,15 @@
       }
     }
     
+    function authorizedFetch(url, options = {}) {
+      const token = localStorage.getItem('jwt');
+      const headers = options.headers || {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      return fetch(url, { ...options, headers });
+    }
+
     async function loadStats() {
-      const response = await fetch('/admin/stats');
+      const response = await authorizedFetch('/admin/stats');
       if (!response.ok) throw new Error('Failed to fetch stats');
       
       const data = await response.json();
@@ -392,7 +461,7 @@
     }
     
     async function loadAnalytics() {
-      const response = await fetch('/admin/stats');
+      const response = await authorizedFetch('/admin/stats');
       if (!response.ok) throw new Error('Failed to fetch analytics');
       
       const data = await response.json();
@@ -416,7 +485,7 @@
     
     async function loadRecentEvents() {
       try {
-        const response = await fetch('/admin/data?limit=20');
+        const response = await authorizedFetch('/admin/data?limit=20');
         if (!response.ok) throw new Error('Failed to fetch events');
         
         const events = await response.json();
@@ -496,10 +565,55 @@
     }
     
     // Handle page visibility for performance
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Login failed' }));
+          document.getElementById('loginError').textContent = err.error || 'Login failed';
+          document.getElementById('loginError').style.display = 'block';
+          return;
+        }
+
+        const data = await res.json();
+        localStorage.setItem('jwt', data.token);
+        document.getElementById('loginModal').style.display = 'none';
+        document.getElementById('loginError').style.display = 'none';
+        loadDashboard();
+        startAutoRefresh();
+      } catch {
+        document.getElementById('loginError').textContent = 'Login failed';
+        document.getElementById('loginError').style.display = 'block';
+      }
+    });
+
+    function checkAuth() {
+      const token = localStorage.getItem('jwt');
+      if (!token) {
+        document.getElementById('loginModal').style.display = 'flex';
+        return false;
+      }
+      return true;
+    }
+
+    if (checkAuth()) {
+      loadDashboard();
+      startAutoRefresh();
+    }
+
     document.addEventListener('visibilitychange', function() {
       if (document.hidden) {
         stopAutoRefresh();
-      } else {
+      } else if (checkAuth()) {
         startAutoRefresh();
         loadDashboard();
       }

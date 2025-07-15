@@ -1,38 +1,66 @@
 const express = require('express');
 const path = require('path');
-const router = express.Router();
+const jwt = require('jsonwebtoken');
+
+const adminRouter = express.Router();
+const authRouter = express.Router();
 const { statements } = require('../config');
 
-// Optional basic authentication middleware
-const basicAuth = (req, res, next) => {
-  const adminPassword = process.env.ADMIN_PASSWORD;
+const jwtSecret = process.env.JWT_SECRET || 'secret';
+const adminUser = process.env.ADMIN_USERNAME;
+const adminPass = process.env.ADMIN_PASSWORD;
 
-  if (!adminPassword) {
-    return next(); // No auth required if no password set
+// POST /api/auth/login - Authenticate admin and return JWT
+authRouter.post('/login', (req, res) => {
+  try {
+    if (!adminUser || !adminPass) {
+      return res.status(500).json({ error: 'Admin credentials not configured' });
+    }
+
+    const { username, password } = req.body || {};
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    if (username !== adminUser || password !== adminPass) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign({ username }, jwtSecret, { expiresIn: '24h' });
+    res.json({ token, expires_in: 86400 });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// JWT authentication middleware
+const requireAuth = (req, res, next) => {
+  if (!adminUser || !adminPass) {
+    return next(); // No auth required if credentials not set
   }
 
   const auth = req.headers.authorization;
-
-  if (!auth || !auth.startsWith('Basic ')) {
-    res.set('WWW-Authenticate', 'Basic realm="Admin Dashboard"');
+  if (!auth || !auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  const credentials = Buffer.from(auth.slice(6), 'base64').toString().split(':');
-  const password = credentials[1];
+  const token = auth.split(' ')[1];
 
-  if (password !== adminPassword) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+  try {
+    jwt.verify(token, jwtSecret);
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
-
-  next();
 };
 
-// Apply basic auth to all admin routes
-router.use(basicAuth);
+// Apply JWT auth to all admin routes
+adminRouter.use(requireAuth);
 
 // GET /admin - Serve admin dashboard
-router.get('/', (req, res) => {
+adminRouter.get('/', (req, res) => {
   try {
     res.sendFile(path.join(__dirname, '../public/admin.html'));
   } catch (error) {
@@ -42,7 +70,7 @@ router.get('/', (req, res) => {
 });
 
 // GET /admin/data - Get analytics summary
-router.get('/data', (req, res) => {
+adminRouter.get('/data', (req, res) => {
   try {
     const { slot, limit = 100 } = req.query;
 
@@ -65,7 +93,7 @@ router.get('/data', (req, res) => {
 });
 
 // GET /admin/stats - Get enhanced statistics
-router.get('/stats', (req, res) => {
+adminRouter.get('/stats', (req, res) => {
   try {
     const stats = statements.getSlotStats.all();
 
@@ -94,7 +122,7 @@ router.get('/stats', (req, res) => {
 });
 
 // GET /admin/export - Export analytics data as CSV
-router.get('/export', (req, res) => {
+adminRouter.get('/export', (req, res) => {
   try {
     const { format = 'csv', slot } = req.query;
 
@@ -159,7 +187,7 @@ router.get('/export', (req, res) => {
 });
 
 // DELETE /admin/data - Clean old analytics data
-router.delete('/data', (req, res) => {
+adminRouter.delete('/data', (req, res) => {
   try {
     const { days = 30 } = req.body;
 
@@ -192,7 +220,7 @@ router.delete('/data', (req, res) => {
 });
 
 // GET /admin/health - Admin health check with database stats
-router.get('/health', (req, res) => {
+adminRouter.get('/health', (req, res) => {
   try {
     const { db } = require('../config');
 
@@ -200,7 +228,7 @@ router.get('/health', (req, res) => {
     const totalEvents = db.prepare('SELECT COUNT(*) as count FROM analytics').get();
     const uniqueSlots = db.prepare('SELECT COUNT(DISTINCT slot) as count FROM analytics').get();
     const recentEvents = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics WHERE timestamp > datetime("now", "-1 hour")'
+      "SELECT COUNT(*) as count FROM analytics WHERE timestamp > datetime('now', '-1 hour')"
     ).get();
 
     res.json({
@@ -223,4 +251,4 @@ router.get('/health', (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = { adminRouter, authRouter };
