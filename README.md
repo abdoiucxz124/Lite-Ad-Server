@@ -34,3 +34,4 @@ docker compose up -d        # or: npm install && npm start
    - OPTIONAL: protect with basic‑auth / reverse‑proxy in production.
 
 Everything is self‑contained—no placeholders.
+# Lite-Ad-Server
