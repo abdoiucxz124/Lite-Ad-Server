@@ -8,8 +8,10 @@ require('dotenv').config();
 const adRoutes = require('./routes/ad');
 const trackRoutes = require('./routes/track');
 const adminRoutes = require('./routes/admin');
+const { initializeAdFormats } = require('./config');
 
 const app = express();
+initializeAdFormats();
 
 // Security middleware
 app.use(helmet({

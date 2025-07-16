@@ -7,6 +7,11 @@ describe('Database Configuration', () => {
   test('should initialize database successfully', () => {
     // Set test database path
     process.env.DATABASE_PATH = path.join(__dirname, '../data/test.db');
+
+    const fs = require('fs');
+    if (fs.existsSync(process.env.DATABASE_PATH)) {
+      fs.unlinkSync(process.env.DATABASE_PATH);
+    }
     
     // Require config after setting env variable
     const { db, statements } = require('../src/config');
@@ -64,7 +69,7 @@ describe('Tracking Data Validation', () => {
         return { valid: false, error: 'Event parameter is required and must be a string' };
       }
       
-      const allowedEvents = ['impression', 'click', 'viewable', 'loaded'];
+      const allowedEvents = ['impression', 'click', 'viewable', 'loaded', 'expand', 'close', 'skip'];
       if (!allowedEvents.includes(event.toLowerCase())) {
         return { valid: false, error: `Event must be one of: ${allowedEvents.join(', ')}` };
       }

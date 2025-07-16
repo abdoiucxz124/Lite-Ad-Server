@@ -32,11 +32,39 @@ try {
     CREATE TABLE IF NOT EXISTS analytics (
       id        INTEGER PRIMARY KEY AUTOINCREMENT,
       slot      TEXT NOT NULL,
-      event     TEXT NOT NULL CHECK (event IN ('impression', 'click')),
+      event     TEXT NOT NULL,
+      format    TEXT,
       ua        TEXT,
       ip        TEXT,
       referer   TEXT,
+      metadata  TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ad_formats (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      name            TEXT UNIQUE NOT NULL,
+      display_name    TEXT,
+      description     TEXT,
+      default_settings TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS ad_campaigns (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT NOT NULL,
+      start_date DATE,
+      end_date   DATE,
+      format_id  INTEGER REFERENCES ad_formats(id),
+      settings   TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS ad_creatives (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER REFERENCES ad_campaigns(id),
+      html_content TEXT,
+      size        TEXT,
+      targeting   TEXT,
+      created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     
     CREATE INDEX IF NOT EXISTS idx_analytics_slot ON analytics(slot);
@@ -52,7 +80,7 @@ try {
 
 // Prepare statements for better performance
 const statements = {
-  insertAnalytics: db.prepare('INSERT INTO analytics (slot, event, ua, ip, referer) VALUES (?, ?, ?, ?, ?)'),
+  insertAnalytics: db.prepare('INSERT INTO analytics (slot, event, format, ua, ip, referer, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)'),
   getAnalyticsSummary: db.prepare(`
     SELECT 
       slot, 
@@ -85,6 +113,78 @@ const statements = {
   `)
 };
 
+const initializeAdFormats = () => {
+  const formats = [
+    {
+      name: 'pushdown',
+      display_name: 'PushDown Banner',
+      description: 'Expandable banner that pushes content down',
+      default_settings: JSON.stringify({
+        defaultSize: '728x90',
+        expandedSize: '728x300',
+        animation: 'smooth',
+        trigger: 'hover',
+        autoExpand: false
+      })
+    },
+    {
+      name: 'interscroller',
+      display_name: 'Interscroller',
+      description: 'Full-screen ads between content sections',
+      default_settings: JSON.stringify({
+        triggerOffset: 50,
+        duration: 5000,
+        allowSkip: true,
+        skipDelay: 3
+      })
+    },
+    {
+      name: 'popup',
+      display_name: 'Popup/Modal',
+      description: 'Overlay-style advertisements',
+      default_settings: JSON.stringify({
+        delay: 3000,
+        frequency: 'once_per_session',
+        exitIntent: true,
+        hasBackdrop: true
+      })
+    },
+    {
+      name: 'inpage',
+      display_name: 'In-page Notification',
+      description: 'Native-looking notification bars',
+      default_settings: JSON.stringify({
+        position: 'top',
+        autoDismiss: 10000,
+        showCloseButton: true,
+        animation: 'slide'
+      })
+    },
+    {
+      name: 'interstitial',
+      display_name: 'Interstitial',
+      description: 'Full-page advertisements',
+      default_settings: JSON.stringify({
+        allowSkip: true,
+        skipDelay: 5,
+        showProgress: true,
+        mobileOptimized: true
+      })
+    }
+  ];
+
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO ad_formats (name, display_name, description, default_settings)
+    VALUES (@name, @display_name, @description, @default_settings)
+  `);
+
+  const transaction = db.transaction(() => {
+    formats.forEach((f) => insert.run(f));
+  });
+
+  transaction();
+};
+
 // Graceful shutdown
 process.on('SIGINT', () => {
   if (db) {
@@ -93,4 +193,4 @@ process.on('SIGINT', () => {
   }
 });
 
-module.exports = { db, statements };
+module.exports = { db, statements, initializeAdFormats };

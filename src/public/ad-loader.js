@@ -1,46 +1,83 @@
-(function (window) {
+(function (window, document) {
   'use strict';
 
-  window.loadAd = function (slot) {
-    if (!slot || typeof slot !== 'string') {
-      console.error('loadAd: slot parameter is required and must be a string');
-      return;
+  class AdFormatManager {
+    constructor () {
+      this.formats = new Map();
+      this.activeAds = new Map();
+      this.initializeFormats();
     }
 
-    try {
-      // Create and inject the ad script
-      const script = document.createElement('script');
-      script.src = '/api/ad?slot=' + encodeURIComponent(slot);
-      script.onerror = function () {
-        console.error('Failed to load ad for slot:', slot);
-      };
+    initializeFormats () {
+      this.formats.set('pushdown', this.renderPushDown.bind(this));
+      this.formats.set('interscroller', this.renderInterscroller.bind(this));
+      this.formats.set('popup', this.renderPopup.bind(this));
+      this.formats.set('inpage', this.renderInPageNotification.bind(this));
+      this.formats.set('interstitial', this.renderInterstitial.bind(this));
+    }
 
-      const currentScript = document.currentScript || document.scripts[document.scripts.length - 1];
-      currentScript.parentNode.insertBefore(script, currentScript);
+    render (config, container) {
+      const renderer = this.formats.get((config.format || '').toLowerCase());
+      if (renderer) {
+        renderer(config, container);
+      } else {
+        console.warn('Unknown ad format:', config.format);
+      }
+    }
 
-      // Track impression
-      fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slot, event: 'impression' })
-      }).catch(function (error) {
-        console.warn('Failed to track impression:', error);
+    renderPushDown (config, container) {
+      const ad = document.createElement('div');
+      ad.className = 'lite-ad-pushdown';
+      ad.style.height = (config.size || '90') + 'px';
+      container.appendChild(ad);
+    }
+
+    renderInterscroller (config, container) {
+      const ad = document.createElement('div');
+      ad.className = 'lite-ad-interscroller';
+      container.appendChild(ad);
+    }
+
+    renderPopup (config, container) {
+      const ad = document.createElement('div');
+      ad.className = 'lite-ad-popup';
+      container.appendChild(ad);
+    }
+
+    renderInPageNotification (config, container) {
+      const ad = document.createElement('div');
+      ad.className = 'lite-ad-notification';
+      container.appendChild(ad);
+    }
+
+    renderInterstitial (config, container) {
+      const ad = document.createElement('div');
+      ad.className = 'lite-ad-interstitial';
+      container.appendChild(ad);
+    }
+  }
+
+  const manager = new AdFormatManager();
+
+  function loadAd (config) {
+    const script = document.currentScript;
+    const container = script.parentNode;
+
+    const render = () => manager.render(config, container);
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries, obs) => {
+        if (entries[0].isIntersecting) {
+          obs.disconnect();
+          render();
+        }
       });
-    } catch (error) {
-      console.error('Error loading ad:', error);
+      observer.observe(container);
+    } else {
+      render();
     }
-  };
+  }
 
-  // Add click tracking helper
-  window.trackAdClick = function (slot) {
-    if (!slot) return;
-
-    fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slot, event: 'click' })
-    }).catch(function (error) {
-      console.warn('Failed to track click:', error);
-    });
-  };
-})(window);
+  window.LiteAdServer = window.LiteAdServer || {};
+  window.LiteAdServer.loadAd = loadAd;
+})(window, document);

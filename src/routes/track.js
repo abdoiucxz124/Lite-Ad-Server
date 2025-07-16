@@ -14,7 +14,7 @@ const validateTrackingData = (data) => {
     return { valid: false, error: 'Event parameter is required and must be a string' };
   }
 
-  const allowedEvents = ['impression', 'click', 'viewable', 'loaded'];
+  const allowedEvents = ['impression', 'click', 'viewable', 'loaded', 'expand', 'close', 'skip'];
   if (!allowedEvents.includes(event.toLowerCase())) {
     return { valid: false, error: `Event must be one of: ${allowedEvents.join(', ')}` };
   }
@@ -35,7 +35,7 @@ const extractClientInfo = (req) => {
 // POST /api/track - Track ad events
 router.post('/', (req, res) => {
   try {
-    const { slot, event } = req.body;
+    const { slot, event, format, metadata } = req.body;
 
     // Validate input data
     const validation = validateTrackingData({ slot, event });
@@ -51,9 +51,11 @@ router.post('/', (req, res) => {
       const result = statements.insertAnalytics.run(
         slot,
         event.toLowerCase(),
+        format || null,
         clientInfo.userAgent,
         clientInfo.ip,
-        clientInfo.referer
+        clientInfo.referer,
+        metadata ? JSON.stringify(metadata) : null
       );
 
       console.log(`📊 Tracked ${event} for slot: ${slot} (ID: ${result.lastInsertRowid})`);
@@ -93,9 +95,11 @@ router.get('/pixel', (req, res) => {
           statements.insertAnalytics.run(
             slot,
             'impression',
+            null,
             clientInfo.userAgent,
             clientInfo.ip,
-            clientInfo.referer
+            clientInfo.referer,
+            null
           );
           console.log(`📊 Pixel tracked impression for slot: ${slot}`);
         } catch (dbError) {
@@ -159,9 +163,11 @@ router.post('/batch', (req, res) => {
         const result = statements.insertAnalytics.run(
           eventData.slot,
           eventData.event.toLowerCase(),
+          eventData.format || null,
           clientInfo.userAgent,
           clientInfo.ip,
-          clientInfo.referer
+          clientInfo.referer,
+          eventData.metadata ? JSON.stringify(eventData.metadata) : null
         );
 
         results.push({

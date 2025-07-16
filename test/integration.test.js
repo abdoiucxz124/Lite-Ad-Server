@@ -20,7 +20,7 @@ describe('Integration Tests', () => {
   test('GET /api/ad serves script', async () => {
     const res = await request(app).get('/api/ad').query({ slot: 'test-slot' });
     assert.strictEqual(res.statusCode, 200);
-    assert.match(res.text, /googletag/);
+    assert.match(res.text, /LiteAdServer.loadAd/);
   });
 
   test('POST /api/track saves event', async () => {
