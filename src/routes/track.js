@@ -1,32 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { statements } = require('../config');
-
-// In-memory aggregation of events per minute
-const aggregates = new Map();
-
-const updateAggregates = (event, timestamp) => {
-  const minute = timestamp.slice(0, 16); // YYYY-MM-DDTHH:MM
-  if (!aggregates.has(minute)) {
-    aggregates.set(minute, { impressions: 0, clicks: 0 });
-    // keep only last 60 minutes
-    const keys = Array.from(aggregates.keys()).sort();
-    if (keys.length > 60) {
-      for (const k of keys.slice(0, keys.length - 60)) aggregates.delete(k);
-    }
-  }
-
-  const counts = aggregates.get(minute);
-  if (event === 'impression') counts.impressions++;
-  if (event === 'click') counts.clicks++;
-};
-
-const getAggregates = () => {
-  return Array.from(aggregates.entries()).map(([minute, counts]) => ({
-    minute,
-    ...counts
-  }));
-};
+const crypto = require('crypto');
+const geoip = require('geoip-lite');
+const UAParser = require('ua-parser-js');
 
 // Validation helpers
 const validateTrackingData = (data) => {
@@ -40,7 +17,7 @@ const validateTrackingData = (data) => {
     return { valid: false, error: 'Event parameter is required and must be a string' };
   }
 
-  const allowedEvents = ['impression', 'click', 'viewable', 'loaded', 'expand', 'close', 'skip'];
+  const allowedEvents = ['impression', 'click', 'viewable', 'loaded'];
   if (!allowedEvents.includes(event.toLowerCase())) {
     return { valid: false, error: `Event must be one of: ${allowedEvents.join(', ')}` };
   }
@@ -58,10 +35,34 @@ const extractClientInfo = (req) => {
   };
 };
 
+const getSessionId = (req) => {
+  return req.body.sessionId || req.headers['x-session-id'] || crypto.randomUUID();
+};
+
+const ensureSession = (req) => {
+  const sessionId = getSessionId(req);
+  const ua = new UAParser(req.headers['user-agent'] || '').getResult();
+  const geo = geoip.lookup(req.ip) || {};
+  const fingerprint = `${req.headers['user-agent'] || ''}-${req.ip}`;
+  try {
+    statements.insertSession.run(
+      sessionId,
+      fingerprint,
+      req.ip,
+      geo.country || '',
+      ua.device.type || 'desktop',
+      ua.browser.name || ''
+    );
+  } catch (err) {
+    console.error('Failed to store session:', err);
+  }
+  return sessionId;
+};
+
 // POST /api/track - Track ad events
 router.post('/', (req, res) => {
   try {
-    const { slot, event, format, metadata } = req.body;
+    const { slot, event } = req.body;
 
     // Validate input data
     const validation = validateTrackingData({ slot, event });
@@ -71,41 +72,34 @@ router.post('/', (req, res) => {
 
     // Extract client information
     const clientInfo = extractClientInfo(req);
+    const sessionId = ensureSession(req);
 
     // Insert tracking data
     try {
       const result = statements.insertAnalytics.run(
         slot,
         event.toLowerCase(),
-        format || null,
         clientInfo.userAgent,
         clientInfo.ip,
-        clientInfo.referer,
-        metadata ? JSON.stringify(metadata) : null
+        clientInfo.referer
       );
-
-      if (req.app.locals.io) {
-        req.app.locals.io.emit('analytics', {
-          slot,
-          event: event.toLowerCase(),
-          timestamp: clientInfo.timestamp
-        });
-      }
+      statements.insertEvent.run(
+        sessionId,
+        event.toLowerCase(),
+        slot,
+        req.body.revenue || 0,
+        JSON.stringify(req.body.metadata || {})
+      );
 
       console.log(`📊 Tracked ${event} for slot: ${slot} (ID: ${result.lastInsertRowid})`);
 
-      updateAggregates(event.toLowerCase(), clientInfo.timestamp);
-      const io = req.app.locals.io;
-      if (io) {
-        io.emit('analytics', { event: event.toLowerCase(), slot, timestamp: clientInfo.timestamp });
-        io.emit('aggregate', getAggregates().slice(-1)[0]);
-      }
-
-      res.json({
+      const payload = {
         success: true,
         id: result.lastInsertRowid,
         timestamp: clientInfo.timestamp
-      });
+      };
+      req.app.get('io').emit('analytics', { slot, event: event.toLowerCase() });
+      res.json(payload);
     } catch (dbError) {
       console.error('Database error while tracking event:', dbError);
       res.status(500).json({
@@ -136,28 +130,14 @@ router.get('/pixel', (req, res) => {
           statements.insertAnalytics.run(
             slot,
             'impression',
-            null,
             clientInfo.userAgent,
             clientInfo.ip,
-            clientInfo.referer,
-            null
+            clientInfo.referer
           );
-<<<<<<< HEAD
-          updateAggregates('impression', clientInfo.timestamp);
-          const io = req.app.locals.io;
-          if (io) {
-            io.emit('analytics', { event: 'impression', slot, timestamp: clientInfo.timestamp });
-            io.emit('aggregate', getAggregates().slice(-1)[0]);
-=======
-          if (req.app.locals.io) {
-            req.app.locals.io.emit('analytics', {
-              slot,
-              event: 'impression',
-              timestamp: clientInfo.timestamp
-            });
->>>>>>> origin/codex/transform-admin-dashboard-into-ad-management-platform
-          }
+          const sessionId = ensureSession(req);
+          statements.insertEvent.run(sessionId, 'impression', slot, 0, '{}');
           console.log(`📊 Pixel tracked impression for slot: ${slot}`);
+          req.app.get('io').emit('analytics', { slot, event: 'impression' });
         } catch (dbError) {
           console.error('Database error in pixel tracking:', dbError);
         }
@@ -202,6 +182,7 @@ router.post('/batch', (req, res) => {
     }
 
     const clientInfo = extractClientInfo(req);
+    const sessionId = ensureSession(req);
     const results = [];
     const errors = [];
 
@@ -219,27 +200,17 @@ router.post('/batch', (req, res) => {
         const result = statements.insertAnalytics.run(
           eventData.slot,
           eventData.event.toLowerCase(),
-          eventData.format || null,
           clientInfo.userAgent,
           clientInfo.ip,
-          clientInfo.referer,
-          eventData.metadata ? JSON.stringify(eventData.metadata) : null
+          clientInfo.referer
         );
-
-<<<<<<< HEAD
-        updateAggregates(eventData.event.toLowerCase(), clientInfo.timestamp);
-        const io = req.app.locals.io;
-        if (io) {
-          io.emit('analytics', { event: eventData.event.toLowerCase(), slot: eventData.slot, timestamp: clientInfo.timestamp });
-=======
-        if (req.app.locals.io) {
-          req.app.locals.io.emit('analytics', {
-            slot: eventData.slot,
-            event: eventData.event.toLowerCase(),
-            timestamp: clientInfo.timestamp
-          });
->>>>>>> origin/codex/transform-admin-dashboard-into-ad-management-platform
-        }
+        statements.insertEvent.run(
+          sessionId,
+          eventData.event.toLowerCase(),
+          eventData.slot,
+          eventData.revenue || 0,
+          JSON.stringify(eventData.metadata || {})
+        );
 
         results.push({
           index: i,
@@ -253,10 +224,7 @@ router.post('/batch', (req, res) => {
     }
 
     console.log(`📊 Batch tracked ${results.length} events, ${errors.length} errors`);
-    const io = req.app.locals.io;
-    if (io) {
-      io.emit('aggregate', getAggregates().slice(-1)[0]);
-    }
+    results.forEach(r => req.app.get('io').emit('analytics', { slot: r.slot, event: events[r.index].event.toLowerCase() }));
 
     res.json({
       success: true,
@@ -276,4 +244,3 @@ router.post('/batch', (req, res) => {
 });
 
 module.exports = router;
-module.exports.getAggregates = getAggregates;
