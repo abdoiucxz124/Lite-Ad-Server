@@ -350,12 +350,22 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     let isOnline = true;
     let refreshInterval;
     
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', function() {
+      const socket = io();
+      socket.on('connect', () => updateConnectionStatus(true));
+      socket.on('disconnect', () => updateConnectionStatus(false));
+      socket.on('analytics', () => {
+        loadStats();
+        loadRecentEvents();
+      });
+
       loadDashboard();
       startAutoRefresh();
     });

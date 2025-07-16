@@ -38,10 +38,33 @@ try {
       referer   TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-    
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      user_fingerprint TEXT,
+      ip_address TEXT,
+      country TEXT,
+      device_type TEXT,
+      browser TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT,
+      event_type TEXT,
+      slot_path TEXT,
+      revenue DECIMAL(10,4),
+      metadata TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_analytics_slot ON analytics(slot);
     CREATE INDEX IF NOT EXISTS idx_analytics_event ON analytics(event);
     CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
+    CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
+    CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
   `);
 
   console.log('✅ Database tables initialized');
@@ -53,6 +76,8 @@ try {
 // Prepare statements for better performance
 const statements = {
   insertAnalytics: db.prepare('INSERT INTO analytics (slot, event, ua, ip, referer) VALUES (?, ?, ?, ?, ?)'),
+  insertSession: db.prepare('INSERT OR IGNORE INTO sessions (id, user_fingerprint, ip_address, country, device_type, browser) VALUES (?, ?, ?, ?, ?, ?)'),
+  insertEvent: db.prepare('INSERT INTO events (session_id, event_type, slot_path, revenue, metadata) VALUES (?, ?, ?, ?, ?)'),
   getAnalyticsSummary: db.prepare(`
     SELECT 
       slot, 
