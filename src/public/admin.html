@@ -314,5 +314,158 @@
       // Update dashboard stats in real-time
     });
   </script>
+
+  <!-- Tag Generator Tab Content -->
+  <div id="tag-generator" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <h3>Universal Ad Tag Generator</h3>
+        <p>Generate customized ad tags for easy website integration</p>
+      </div>
+
+      <div class="card-body">
+        <form id="tag-generator-form">
+          <div class="grid grid-cols-2">
+            <div class="form-group">
+              <label class="form-label">Ad Format</label>
+              <select class="form-select" name="format" required>
+                <option value="banner">Banner Ad</option>
+                <option value="pushdown">PushDown Banner</option>
+                <option value="interscroller">Interscroller</option>
+                <option value="popup">Popup/Modal</option>
+                <option value="inpage">In-page Notification</option>
+                <option value="interstitial">Interstitial</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Ad Size</label>
+              <select class="form-select" name="size">
+                <option value="728x90">728x90 (Leaderboard)</option>
+                <option value="300x250">300x250 (Medium Rectangle)</option>
+                <option value="970x250">970x250 (Billboard)</option>
+                <option value="320x50">320x50 (Mobile Banner)</option>
+                <option value="responsive">Responsive</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Placement</label>
+              <select class="form-select" name="placement">
+                <option value="header">Header</option>
+                <option value="sidebar">Sidebar</option>
+                <option value="content">Within Content</option>
+                <option value="footer">Footer</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Geographic Targeting</label>
+              <input type="text" class="form-input" name="geo" placeholder="US,CA,UK (optional)">
+            </div>
+          </div>
+
+          <details class="advanced-options">
+            <summary>Advanced Options</summary>
+            <div class="grid grid-cols-2">
+              <div class="form-group">
+                <label class="form-label">Frequency Capping</label>
+                <select class="form-select" name="frequency">
+                  <option value="">No limit</option>
+                  <option value="once_per_session">Once per session</option>
+                  <option value="once_per_day">Once per day</option>
+                  <option value="max_3_per_day">Max 3 per day</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Scheduling</label>
+                <input type="text" class="form-input" name="schedule" placeholder="9:00-17:00 (optional)">
+              </div>
+            </div>
+          </details>
+
+          <button type="submit" class="btn btn-primary">Generate Tag</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="generated-tag" class="card" style="display: none;">
+      <div class="card-header">
+        <h3>Generated Ad Tag</h3>
+        <button class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
+      </div>
+
+      <div class="card-body">
+        <textarea id="tag-code" class="form-textarea" rows="10" readonly></textarea>
+
+        <div class="integration-guides">
+          <h4>Integration Guides:</h4>
+          <div class="grid grid-cols-3">
+            <div class="guide-card">
+              <h5>HTML/JavaScript</h5>
+              <p>Copy and paste the tag directly into your HTML</p>
+            </div>
+            <div class="guide-card">
+              <h5>WordPress</h5>
+              <p>Use our WordPress plugin or add to theme files</p>
+            </div>
+            <div class="guide-card">
+              <h5>React/Vue</h5>
+              <p>Use our component libraries for framework integration</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  document.getElementById('tag-generator-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const config = {
+      format: formData.get('format'),
+      size: formData.get('size'),
+      placement: formData.get('placement'),
+      targeting: {
+        geo: formData.get('geo')?.split(',').filter(Boolean) || []
+      },
+      frequency: formData.get('frequency') || null,
+      schedule: formData.get('schedule') || null
+    };
+
+    try {
+      const response = await fetch('/admin/api/generate-tag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+
+      const result = await response.json();
+
+      document.getElementById('tag-code').value = result.tag;
+      document.getElementById('generated-tag').style.display = 'block';
+      document.getElementById('generated-tag').scrollIntoView({ behavior: 'smooth' });
+
+    } catch (error) {
+      alert('Error generating tag: ' + error.message);
+    }
+  });
+
+  function copyToClipboard() {
+    const tagCode = document.getElementById('tag-code');
+    tagCode.select();
+    document.execCommand('copy');
+
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-success';
+    notification.textContent = 'Tag copied to clipboard!';
+    document.body.appendChild(notification);
+
+    setTimeout(() => notification.remove(), 3000);
+  }
+  </script>
 </body>
 </html>
