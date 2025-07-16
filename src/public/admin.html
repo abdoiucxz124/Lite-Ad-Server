@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🚀 Lite Ad Server - Analytics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * {
       margin: 0;
@@ -290,9 +291,84 @@
       </a>
       <div class="status" id="connectionStatus">
         <span id="statusDot">🟢</span> Online
+  </div>
+  </div>
+
+  <!-- Advanced Analytics Tab -->
+  <div id="advanced-analytics" class="tab-content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="total-revenue">$0</div>
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-change" id="revenue-change">+0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="avg-cpm">$0.00</div>
+        <div class="stat-label">Average CPM</div>
+        <div class="stat-change" id="cpm-change">+0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="fill-rate">0%</div>
+        <div class="stat-label">Fill Rate</div>
+        <div class="stat-change" id="fill-rate-change">+0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="total-impressions">0</div>
+        <div class="stat-label">Impressions</div>
+        <div class="stat-change" id="impressions-change">+0%</div>
       </div>
     </div>
-    
+
+    <div class="grid grid-cols-2">
+      <div class="card">
+        <div class="card-header"><h3>Revenue Trends</h3></div>
+        <div class="card-body">
+          <canvas id="revenue-chart" width="400" height="200"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Format Performance</h3></div>
+        <div class="card-body">
+          <canvas id="format-chart" width="400" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Optimization Insights</h3>
+        <button class="btn btn-primary" onclick="generateInsights()">Refresh Insights</button>
+      </div>
+      <div class="card-body">
+        <div id="insights-container"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>A/B Testing</h3>
+        <button class="btn btn-primary" onclick="createABTest()">Create New Test</button>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Test Name</th>
+                <th>Status</th>
+                <th>Traffic Split</th>
+                <th>Confidence</th>
+                <th>Winner</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ab-tests-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
     <div class="metrics" id="metricsContainer">
       <div class="metric-card impressions">
         <div class="metric-value" id="totalImpressions">-</div>
@@ -496,14 +572,101 @@
     }
     
     // Handle page visibility for performance
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden) {
-        stopAutoRefresh();
-      } else {
-        startAutoRefresh();
-        loadDashboard();
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      stopAutoRefresh();
+    } else {
+      startAutoRefresh();
+      loadDashboard();
+    }
+  });
+
+  // Advanced Analytics JavaScript
+  class AdvancedAnalytics {
+    constructor() {
+      this.charts = {};
+      this.initializeCharts();
+      this.loadAnalyticsData();
+      this.setupRealTimeUpdates();
+    }
+    initializeCharts() {
+      const revenueCtx = document.getElementById('revenue-chart').getContext('2d');
+      this.charts.revenue = new Chart(revenueCtx, {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'Revenue', data: [], borderColor: 'rgb(59,130,246)', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.1 }] },
+        options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v.toFixed(2) } } } }
+      });
+      const formatCtx = document.getElementById('format-chart').getContext('2d');
+      this.charts.format = new Chart(formatCtx, {
+        type: 'doughnut',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'] }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+    async loadAnalyticsData() {
+      try {
+        const response = await fetch('/admin/api/analytics-dashboard');
+        const data = await response.json();
+        this.updateStats(data.stats);
+        this.updateCharts(data.charts);
+        this.loadInsights();
+        this.loadABTests();
+      } catch (error) { console.error('Failed to load analytics:', error); }
+    }
+    updateStats(stats) {
+      document.getElementById('total-revenue').textContent = '$' + stats.totalRevenue.toFixed(2);
+      document.getElementById('avg-cpm').textContent = '$' + stats.avgCPM.toFixed(2);
+      document.getElementById('fill-rate').textContent = (stats.fillRate * 100).toFixed(1) + '%';
+      document.getElementById('total-impressions').textContent = stats.totalImpressions.toLocaleString();
+      this.updateChangeIndicator('revenue-change', stats.revenueChange);
+      this.updateChangeIndicator('cpm-change', stats.cpmChange);
+      this.updateChangeIndicator('fill-rate-change', stats.fillRateChange);
+      this.updateChangeIndicator('impressions-change', stats.impressionsChange);
+    }
+    updateChangeIndicator(id, change) {
+      const el = document.getElementById(id);
+      const positive = change >= 0;
+      el.textContent = (positive ? '+' : '') + change.toFixed(1) + '%';
+      el.className = 'stat-change ' + (positive ? 'positive' : 'negative');
+    }
+    updateCharts(chartData) {
+      this.charts.revenue.data.labels = chartData.revenue.labels;
+      this.charts.revenue.data.datasets[0].data = chartData.revenue.data;
+      this.charts.revenue.update();
+      this.charts.format.data.labels = chartData.formats.labels;
+      this.charts.format.data.datasets[0].data = chartData.formats.data;
+      this.charts.format.update();
+    }
+    async loadInsights() {
+      try {
+        const response = await fetch('/admin/api/revenue-insights');
+        const data = await response.json();
+        const container = document.getElementById('insights-container');
+        container.innerHTML = data.insights.map(i => `<div class="insight-card"><h4>${i.title}</h4><p>${i.recommendation}</p></div>`).join('');
+      } catch (error) { console.error('Failed to load insights:', error); }
+    }
+    loadABTests() {}
+    setupRealTimeUpdates() {
+      if (window.socket) {
+        window.socket.on('analytics-update', data => this.handleRealTimeUpdate(data));
       }
-    });
+    }
+    handleRealTimeUpdate(data) { this.updateRealtimeStats?.(data.aggregates); }
+  }
+  const advancedAnalytics = new AdvancedAnalytics();
+
+  async function createABTest() {
+    const testConfig = { name: prompt('Test name:'), hypothesis: prompt('Test hypothesis:'), variants: [{ name: 'Control', config: {} }, { name: 'Variant A', config: {} }], trafficSplit: 50, successMetrics: ['ctr', 'revenue'], duration: 7 };
+    if (testConfig.name) {
+      try {
+        const response = await fetch('/admin/api/ab-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(testConfig) });
+        await response.json();
+        advancedAnalytics.loadABTests();
+      } catch (error) { alert('Failed to create A/B test: ' + error.message); }
+    }
+  }
+
+  async function generateInsights() { await advancedAnalytics.loadInsights(); }
   </script>
 </body>
 </html>
