@@ -1,5 +1,9 @@
 const express = require('express');
+const { LRUCache } = require('lru-cache');
 const router = express.Router();
+
+// Simple in-memory cache for generated ad tags
+const adCache = new LRUCache({ max: 100, ttl: 60 * 1000 });
 
 // Validation helper
 const validateSlot = (slot) => {
@@ -58,25 +62,35 @@ router.get('/', (req, res) => {
     // Get network ID from environment or extract from slot
     const networkId = process.env.GAM_NETWORK_ID || slot.split('/')[0] || '22904833613';
 
+    const requestedFormat = (format || 'javascript').toLowerCase();
+    const cacheKey = `${slot}:${requestedFormat}`;
+    if (adCache.has(cacheKey)) {
+      const cached = adCache.get(cacheKey);
+      res.type(cached.type).send(cached.payload);
+      return;
+    }
+
     // Generate the ad tag
     const adTag = generateAdTag(slot, networkId);
 
     // Determine response format
-    const requestedFormat = format || 'javascript';
-
-    switch (requestedFormat.toLowerCase()) {
+    switch (requestedFormat) {
       case 'html':
+        adCache.set(cacheKey, { type: 'text/html', payload: adTag });
         res.type('text/html').send(adTag);
         break;
 
-      case 'json':
-        res.json({
+      case 'json': {
+        const payload = {
           slot,
           networkId,
           html: adTag,
           timestamp: new Date().toISOString()
-        });
+        };
+        adCache.set(cacheKey, { type: 'application/json', payload });
+        res.json(payload);
         break;
+      }
 
       case 'javascript':
       default: {
@@ -90,6 +104,7 @@ router.get('/', (req, res) => {
             }
           })();
         `;
+        adCache.set(cacheKey, { type: 'application/javascript', payload: jsCode });
         res.type('application/javascript').send(jsCode);
         break;
       }

@@ -3,6 +3,9 @@ const morgan = require('morgan');
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
+const responseTime = require('response-time');
+const { monitorEventLoopDelay } = require('node:perf_hooks');
 require('dotenv').config();
 
 const adRoutes = require('./routes/ad');
@@ -10,6 +13,10 @@ const trackRoutes = require('./routes/track');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
+
+// Compression and response timing
+app.use(compression());
+app.use(responseTime());
 
 // Security middleware
 app.use(helmet({
@@ -98,20 +105,36 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 4000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Lite Ad Server running on port ${PORT}`);
-  console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-  console.log(`📈 Health check: http://localhost:${PORT}/health`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
-    process.exit(0);
+const startServer = (port = process.env.PORT || 4000) => {
+  const server = app.listen(port, () => {
+    console.log(`🚀 Lite Ad Server running on port ${port}`);
+    console.log(`📊 Admin dashboard: http://localhost:${port}/admin`);
+    console.log(`📈 Health check: http://localhost:${port}/health`);
   });
-});
 
-module.exports = app;
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  });
+
+  return server;
+};
+
+if (require.main === module) {
+  startServer();
+
+  // Basic performance monitoring
+  const histogram = monitorEventLoopDelay({ resolution: 20 });
+  histogram.enable();
+  setInterval(() => {
+    const rss = (process.memoryUsage().rss / 1024 / 1024).toFixed(0);
+    const lag = (histogram.mean / 1e6).toFixed(2);
+    console.log(`📈 Memory: ${rss}MB, Event Loop Lag: ${lag}ms`);
+    histogram.reset();
+  }, 60000);
+}
+
+module.exports = { app, startServer };

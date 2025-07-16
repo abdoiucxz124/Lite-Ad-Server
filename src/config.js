@@ -42,6 +42,7 @@ try {
     CREATE INDEX IF NOT EXISTS idx_analytics_slot ON analytics(slot);
     CREATE INDEX IF NOT EXISTS idx_analytics_event ON analytics(event);
     CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_analytics_slot_timestamp ON analytics(slot, timestamp);
   `);
 
   console.log('✅ Database tables initialized');
