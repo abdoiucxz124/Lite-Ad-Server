@@ -44,9 +44,13 @@ router.get('/', (req, res) => {
 // GET /admin/data - Get analytics summary
 router.get('/data', (req, res) => {
   try {
-    const { slot, limit = 100 } = req.query;
+    const { slot, session, limit = 100 } = req.query;
 
-    if (slot) {
+    if (session) {
+      const { db } = require('../config');
+      const data = db.prepare('SELECT * FROM events WHERE session_id = ? ORDER BY created_at DESC LIMIT ?').all(session, parseInt(limit));
+      res.json(data);
+    } else if (slot) {
       // Get specific slot data
       const data = statements.getAnalyticsDetail.all(slot, parseInt(limit));
       res.json(data);
@@ -202,6 +206,8 @@ router.get('/health', (req, res) => {
     const recentEvents = db.prepare(
       'SELECT COUNT(*) as count FROM analytics WHERE timestamp > datetime("now", "-1 hour")'
     ).get();
+    const sessionCount = db.prepare('SELECT COUNT(*) as count FROM sessions').get();
+    const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get();
 
     res.json({
       status: 'healthy',
@@ -209,7 +215,9 @@ router.get('/health', (req, res) => {
       database: {
         total_events: totalEvents.count,
         unique_slots: uniqueSlots.count,
-        recent_events_1h: recentEvents.count
+        recent_events_1h: recentEvents.count,
+        sessions: sessionCount.count,
+        events: eventCount.count
       },
       version: require('../../package.json').version
     });
