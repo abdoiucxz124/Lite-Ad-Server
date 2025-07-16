@@ -14,9 +14,10 @@ describe('Performance Tests', () => {
   test('ad endpoint handles load quickly', async () => {
     const startMem = process.memoryUsage().heapUsed;
     const start = performance.now();
-    for (let i = 0; i < 20; i++) {
-      await request(app).get('/api/ad').query({ slot: 'load-slot' });
-    }
+    const requests = Array.from({ length: 20 }, () => 
+      request(app).get('/api/ad').query({ slot: 'load-slot' })
+    );
+    await Promise.all(requests);
     const duration = performance.now() - start;
     const endMem = process.memoryUsage().heapUsed;
     assert.ok(duration < 2000, `duration ${duration}`);
