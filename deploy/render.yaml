@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: lite-ad-server
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: "npm ci && npm run lint && node --test"
+    startCommand: "node src/server.js"
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+    disks:
+      - name: data
+        mountPath: /app/data
+        sizeGB: 1
