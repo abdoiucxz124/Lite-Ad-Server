@@ -56,6 +56,14 @@ router.post('/', (req, res) => {
         clientInfo.referer
       );
 
+      if (req.app.locals.io) {
+        req.app.locals.io.emit('analytics', {
+          slot,
+          event: event.toLowerCase(),
+          timestamp: clientInfo.timestamp
+        });
+      }
+
       console.log(`📊 Tracked ${event} for slot: ${slot} (ID: ${result.lastInsertRowid})`);
 
       res.json({
@@ -97,6 +105,13 @@ router.get('/pixel', (req, res) => {
             clientInfo.ip,
             clientInfo.referer
           );
+          if (req.app.locals.io) {
+            req.app.locals.io.emit('analytics', {
+              slot,
+              event: 'impression',
+              timestamp: clientInfo.timestamp
+            });
+          }
           console.log(`📊 Pixel tracked impression for slot: ${slot}`);
         } catch (dbError) {
           console.error('Database error in pixel tracking:', dbError);
@@ -163,6 +178,14 @@ router.post('/batch', (req, res) => {
           clientInfo.ip,
           clientInfo.referer
         );
+
+        if (req.app.locals.io) {
+          req.app.locals.io.emit('analytics', {
+            slot: eventData.slot,
+            event: eventData.event.toLowerCase(),
+            timestamp: clientInfo.timestamp
+          });
+        }
 
         results.push({
           index: i,

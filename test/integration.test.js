@@ -8,7 +8,7 @@ describe('Integration Tests', () => {
   before(() => {
     process.env.DATABASE_PATH = ':memory:';
     process.env.ADMIN_PASSWORD = '';
-    app = require('../src/server');
+    app = require('../src/server').app;
   });
 
   test('GET /health returns ok', async () => {
@@ -41,6 +41,21 @@ describe('Integration Tests', () => {
     const res = await request(app).get('/admin/data');
     assert.strictEqual(res.statusCode, 200);
     assert.ok(Array.isArray(res.body));
+  });
+
+  test('GET /admin/api/formats returns formats', async () => {
+    const res = await request(app).get('/admin/api/formats');
+    assert.strictEqual(res.statusCode, 200);
+    assert.ok(Array.isArray(res.body));
+    assert.ok(res.body.length > 0);
+  });
+
+  test('POST /admin/api/campaigns creates campaign', async () => {
+    const res = await request(app)
+      .post('/admin/api/campaigns')
+      .send({ name: 'Test Campaign', format_id: 1 });
+    assert.strictEqual(res.statusCode, 200);
+    assert.ok(res.body.id);
   });
 
   test('GET unknown route returns 404', async () => {

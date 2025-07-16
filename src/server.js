@@ -3,6 +3,8 @@ const morgan = require('morgan');
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
+const http = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const adRoutes = require('./routes/ad');
@@ -10,6 +12,7 @@ const trackRoutes = require('./routes/track');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
+const httpServer = http.createServer(app);
 
 // Security middleware
 app.use(helmet({
@@ -35,6 +38,9 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
+
+const io = new Server(httpServer, { cors: corsOptions });
+app.locals.io = io;
 
 // Logging
 const logFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
@@ -100,10 +106,12 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-let server;
+io.on('connection', () => {
+  console.log('📡 Admin connected');
+});
 
 if (require.main === module) {
-  server = app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(`🚀 Lite Ad Server running on port ${PORT}`);
     console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
     console.log(`📈 Health check: http://localhost:${PORT}/health`);
@@ -112,11 +120,11 @@ if (require.main === module) {
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
-    server.close(() => {
+    httpServer.close(() => {
       console.log('Process terminated');
       process.exit(0);
     });
   });
 }
 
-module.exports = app;
+module.exports = { app, io };
