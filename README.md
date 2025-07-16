@@ -7,6 +7,7 @@ Production‑ready, lightweight Ad Server connected to **Google Ad Manager**.
 * **Ad Delivery Service** – generates & serves GA Manager ad tags via `/api/ad?slot=...`.
 * **Tracking Service** – logs `impression`/`click` events to SQLite.
 * **Admin Dashboard** – simple UI at `/admin` with aggregated stats.
+* **Caching & Compression** – faster responses and reduced bandwidth.
 
 ## Quick start
 
@@ -15,6 +16,12 @@ git clone https://example.com/lite-ad-server.git
 cd lite-ad-server
 cp .env.example .env        # adjust if needed
 docker compose up -d        # or: npm install && npm start
+```
+
+Run performance tests with:
+
+```bash
+npm run test:performance
 ```
 
 ### Embed on any site

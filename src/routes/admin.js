@@ -1,7 +1,11 @@
 const express = require('express');
 const path = require('path');
+const { LRUCache } = require('lru-cache');
 const router = express.Router();
 const { statements } = require('../config');
+
+// Cache for analytics queries
+const analyticsCache = new LRUCache({ max: 50, ttl: 30 * 1000 });
 
 // Optional basic authentication middleware
 const basicAuth = (req, res, next) => {
@@ -46,13 +50,20 @@ router.get('/data', (req, res) => {
   try {
     const { slot, limit = 100 } = req.query;
 
+    const cacheKey = slot ? `detail:${slot}:${limit}` : 'summary';
+    if (analyticsCache.has(cacheKey)) {
+      return res.json(analyticsCache.get(cacheKey));
+    }
+
     if (slot) {
       // Get specific slot data
       const data = statements.getAnalyticsDetail.all(slot, parseInt(limit));
+      analyticsCache.set(cacheKey, data);
       res.json(data);
     } else {
       // Get summary data
       const data = statements.getAnalyticsSummary.all();
+      analyticsCache.set(cacheKey, data);
       res.json(data);
     }
   } catch (error) {
@@ -67,6 +78,11 @@ router.get('/data', (req, res) => {
 // GET /admin/stats - Get enhanced statistics
 router.get('/stats', (req, res) => {
   try {
+    const cacheKey = 'stats';
+    if (analyticsCache.has(cacheKey)) {
+      return res.json(analyticsCache.get(cacheKey));
+    }
+
     const stats = statements.getSlotStats.all();
 
     // Calculate totals
@@ -79,11 +95,13 @@ router.get('/stats', (req, res) => {
       ? ((totals.clicks / totals.impressions) * 100).toFixed(2)
       : 0;
 
-    res.json({
+    const payload = {
       slots: stats,
       totals,
       timestamp: new Date().toISOString()
-    });
+    };
+    analyticsCache.set(cacheKey, payload);
+    res.json(payload);
   } catch (error) {
     console.error('Error fetching statistics:', error);
     res.status(500).json({
