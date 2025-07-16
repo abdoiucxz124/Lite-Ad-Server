@@ -1,6 +1,4 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
 const morgan = require('morgan');
 const path = require('path');
 const cors = require('cors');
@@ -10,20 +8,10 @@ require('dotenv').config();
 const adRoutes = require('./routes/ad');
 const trackRoutes = require('./routes/track');
 const adminRoutes = require('./routes/admin');
+const { initializeAdFormats } = require('./config');
 
 const app = express();
-const httpServer = http.createServer(app);
-const io = new Server(httpServer, {
-  cors: { origin: process.env.CORS_ORIGIN || '*' }
-});
-app.locals.io = io;
-
-io.on('connection', (socket) => {
-  console.log('🔌 Admin socket connected');
-  socket.emit('aggregate-init', trackRoutes.getAggregates());
-  socket.on('disconnect', () => console.log('🔌 Admin socket disconnected'));
-  socket.on('error', (err) => console.error('Socket error:', err));
-});
+initializeAdFormats();
 
 // Security middleware
 app.use(helmet({
@@ -49,8 +37,6 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-
-
 
 // Logging
 const logFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
@@ -116,8 +102,10 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
+let server;
+
 if (require.main === module) {
-  httpServer.listen(PORT, () => {
+  server = app.listen(PORT, () => {
     console.log(`🚀 Lite Ad Server running on port ${PORT}`);
     console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
     console.log(`📈 Health check: http://localhost:${PORT}/health`);
@@ -126,11 +114,11 @@ if (require.main === module) {
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
-    httpServer.close(() => {
+    server.close(() => {
       console.log('Process terminated');
       process.exit(0);
     });
   });
 }
 
-module.exports = { app, io };
+module.exports = app;

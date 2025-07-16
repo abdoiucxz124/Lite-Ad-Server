@@ -44,10 +44,28 @@ const generateAdTag = (slot, networkId) => {
     </div>`;
 };
 
+// Generate advanced ad tag with dynamic loader
+const generateAdvancedAdTag = (config) => {
+  return `
+    <div class="lite-ad-container" 
+         data-format="${config.format}"
+         data-slot="${config.slot}"
+         data-size="${config.size || ''}"
+         data-targeting='${JSON.stringify(config.targeting || {})}'>
+      <script>
+        (function() {
+          window.LiteAdServer = window.LiteAdServer || {};
+          window.LiteAdServer.loadAd(${JSON.stringify(config)});
+        })();
+      </script>
+    </div>
+  `;
+};
+
 // GET /api/ad - Serve ad tags
 router.get('/', (req, res) => {
   try {
-    const { slot, format } = req.query;
+    const { slot, format, size, targeting, delay, position, allowSkip, response } = req.query;
 
     // Validate slot parameter
     const validation = validateSlot(slot);
@@ -58,11 +76,19 @@ router.get('/', (req, res) => {
     // Get network ID from environment or extract from slot
     const networkId = process.env.GAM_NETWORK_ID || slot.split('/')[0] || '22904833613';
 
-    // Generate the ad tag
-    const adTag = generateAdTag(slot, networkId);
+    const config = {
+      format: format || 'pushdown',
+      slot,
+      size,
+      targeting: targeting ? JSON.parse(targeting) : undefined,
+      delay: delay ? parseInt(delay, 10) : undefined,
+      position,
+      allowSkip: allowSkip === 'true'
+    };
 
-    // Determine response format
-    const requestedFormat = format || 'javascript';
+    const adTag = generateAdvancedAdTag(config);
+
+    const requestedFormat = response || 'javascript';
 
     switch (requestedFormat.toLowerCase()) {
       case 'html':
@@ -97,7 +123,7 @@ router.get('/', (req, res) => {
 
     // Log the ad request (optional, can be disabled for performance)
     if (process.env.LOG_AD_REQUESTS !== 'false') {
-      console.log(`📺 Ad requested: ${slot} (format: ${requestedFormat})`);
+      console.log(`📺 Ad requested: ${slot} (format: ${config.format})`);
     }
   } catch (error) {
     console.error('Error serving ad:', error);
