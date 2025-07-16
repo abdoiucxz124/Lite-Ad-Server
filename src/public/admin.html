@@ -266,9 +266,47 @@
         justify-content: center;
       }
     }
+
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .login-form {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 300px;
+    }
+
+    .login-form input {
+      padding: 10px;
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
+  <div id="loginOverlay" class="login-overlay" style="display:none;">
+    <form id="loginForm" class="login-form">
+      <h2>Admin Login</h2>
+      <input type="text" id="username" placeholder="Username" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button type="submit" class="btn">Login</button>
+      <div id="loginError" class="error" style="display:none;"></div>
+    </form>
+  </div>
   <div class="container">
     <div class="header">
       <h1>🚀 Lite Ad Server</h1>
@@ -279,13 +317,13 @@
       <button class="btn" onclick="refreshData()">
         <span>🔄</span> Refresh Data
       </button>
-      <a href="/admin/export?format=csv" class="btn">
+      <a href="#" id="exportCsv" class="btn">
         <span>📊</span> Export CSV
       </a>
-      <a href="/admin/export?format=json" class="btn">
+      <a href="#" id="exportJson" class="btn">
         <span>📋</span> Export JSON
       </a>
-      <a href="/admin/health" class="btn secondary" target="_blank">
+      <a href="#" id="healthCheck" class="btn secondary">
         <span>🏥</span> Health Check
       </a>
       <div class="status" id="connectionStatus">
@@ -353,12 +391,56 @@
   <script>
     let isOnline = true;
     let refreshInterval;
-    
-    // Initialize dashboard
+    let token = localStorage.getItem('jwtToken');
+    const overlay = document.getElementById('loginOverlay');
+    const loginForm = document.getElementById('loginForm');
+
     document.addEventListener('DOMContentLoaded', function() {
+      loginForm.addEventListener('submit', handleLogin);
+      if (!token) {
+        overlay.style.display = 'flex';
+      } else {
+        startApp();
+      }
+    });
+
+    function startApp() {
+      overlay.style.display = 'none';
       loadDashboard();
       startAutoRefresh();
-    });
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'Login failed');
+        }
+        const data = await res.json();
+        token = data.token;
+        localStorage.setItem('jwtToken', token);
+        startApp();
+      } catch (err) {
+        const errDiv = document.getElementById('loginError');
+        errDiv.textContent = err.message;
+        errDiv.style.display = 'block';
+      }
+    }
+
+    function authFetch(url, options = {}) {
+      options.headers = Object.assign({}, options.headers, {
+        Authorization: `Bearer ${token}`
+      });
+      return fetch(url, options);
+    }
     
     async function loadDashboard() {
       try {
@@ -376,7 +458,7 @@
     }
     
     async function loadStats() {
-      const response = await fetch('/admin/stats');
+      const response = await authFetch('/admin/stats');
       if (!response.ok) throw new Error('Failed to fetch stats');
       
       const data = await response.json();
@@ -392,7 +474,7 @@
     }
     
     async function loadAnalytics() {
-      const response = await fetch('/admin/stats');
+      const response = await authFetch('/admin/stats');
       if (!response.ok) throw new Error('Failed to fetch analytics');
       
       const data = await response.json();
@@ -416,7 +498,7 @@
     
     async function loadRecentEvents() {
       try {
-        const response = await fetch('/admin/data?limit=20');
+        const response = await authFetch('/admin/data?limit=20');
         if (!response.ok) throw new Error('Failed to fetch events');
         
         const events = await response.json();
@@ -484,6 +566,45 @@
     function refreshData() {
       loadDashboard();
     }
+
+    document.getElementById('exportCsv').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const res = await authFetch('/admin/export?format=csv');
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'analytics.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    document.getElementById('exportJson').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const res = await authFetch('/admin/export?format=json');
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'analytics.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    document.getElementById('healthCheck').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const res = await authFetch('/admin/health');
+      if (res.ok) {
+        const data = await res.json();
+        alert('Server status: ' + data.status);
+      } else {
+        alert('Health check failed');
+      }
+    });
     
     function startAutoRefresh() {
       refreshInterval = setInterval(loadDashboard, 30000); // Refresh every 30 seconds
