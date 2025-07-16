@@ -99,19 +99,24 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Lite Ad Server running on port ${PORT}`);
-  console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-  console.log(`📈 Health check: http://localhost:${PORT}/health`);
-});
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
-    process.exit(0);
+let server;
+
+if (require.main === module) {
+  server = app.listen(PORT, () => {
+    console.log(`🚀 Lite Ad Server running on port ${PORT}`);
+    console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
+    console.log(`📈 Health check: http://localhost:${PORT}/health`);
   });
-});
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  });
+}
 
 module.exports = app;

@@ -200,7 +200,7 @@ router.get('/health', (req, res) => {
     const totalEvents = db.prepare('SELECT COUNT(*) as count FROM analytics').get();
     const uniqueSlots = db.prepare('SELECT COUNT(DISTINCT slot) as count FROM analytics').get();
     const recentEvents = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics WHERE timestamp > datetime("now", "-1 hour")'
+      "SELECT COUNT(*) as count FROM analytics WHERE timestamp > datetime('now', '-1 hour')"
     ).get();
 
     res.json({
