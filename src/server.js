@@ -50,6 +50,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+
+
 // Logging
 const logFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
 app.use(morgan(logFormat));
@@ -113,20 +115,22 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-const server = httpServer.listen(PORT, () => {
-  console.log(`🚀 Lite Ad Server running on port ${PORT}`);
-  console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-  console.log(`📈 Health check: http://localhost:${PORT}/health`);
-});
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  io.close();
-  server.close(() => {
-    console.log('Process terminated');
-    process.exit(0);
+if (require.main === module) {
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 Lite Ad Server running on port ${PORT}`);
+    console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
+    console.log(`📈 Health check: http://localhost:${PORT}/health`);
   });
-});
 
-module.exports = { app, server, io };
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    httpServer.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  });
+}
+
+module.exports = { app, io };

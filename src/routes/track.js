@@ -82,6 +82,14 @@ router.post('/', (req, res) => {
         clientInfo.referer
       );
 
+      if (req.app.locals.io) {
+        req.app.locals.io.emit('analytics', {
+          slot,
+          event: event.toLowerCase(),
+          timestamp: clientInfo.timestamp
+        });
+      }
+
       console.log(`📊 Tracked ${event} for slot: ${slot} (ID: ${result.lastInsertRowid})`);
 
       updateAggregates(event.toLowerCase(), clientInfo.timestamp);
@@ -130,11 +138,20 @@ router.get('/pixel', (req, res) => {
             clientInfo.ip,
             clientInfo.referer
           );
+<<<<<<< HEAD
           updateAggregates('impression', clientInfo.timestamp);
           const io = req.app.locals.io;
           if (io) {
             io.emit('analytics', { event: 'impression', slot, timestamp: clientInfo.timestamp });
             io.emit('aggregate', getAggregates().slice(-1)[0]);
+=======
+          if (req.app.locals.io) {
+            req.app.locals.io.emit('analytics', {
+              slot,
+              event: 'impression',
+              timestamp: clientInfo.timestamp
+            });
+>>>>>>> origin/codex/transform-admin-dashboard-into-ad-management-platform
           }
           console.log(`📊 Pixel tracked impression for slot: ${slot}`);
         } catch (dbError) {
@@ -203,10 +220,19 @@ router.post('/batch', (req, res) => {
           clientInfo.referer
         );
 
+<<<<<<< HEAD
         updateAggregates(eventData.event.toLowerCase(), clientInfo.timestamp);
         const io = req.app.locals.io;
         if (io) {
           io.emit('analytics', { event: eventData.event.toLowerCase(), slot: eventData.slot, timestamp: clientInfo.timestamp });
+=======
+        if (req.app.locals.io) {
+          req.app.locals.io.emit('analytics', {
+            slot: eventData.slot,
+            event: eventData.event.toLowerCase(),
+            timestamp: clientInfo.timestamp
+          });
+>>>>>>> origin/codex/transform-admin-dashboard-into-ad-management-platform
         }
 
         results.push({

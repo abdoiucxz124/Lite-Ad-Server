@@ -31,6 +31,147 @@ const basicAuth = (req, res, next) => {
 // Apply basic auth to all admin routes
 router.use(basicAuth);
 
+// -----------------------
+// Format Management
+// -----------------------
+router.get('/api/formats', (req, res) => {
+  try {
+    const formats = statements.getFormats.all();
+    res.json(formats.map(f => ({
+      ...f,
+      default_settings: f.default_settings ? JSON.parse(f.default_settings) : {}
+    })));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load formats' });
+  }
+});
+
+router.post('/api/formats', (req, res) => {
+  try {
+    const { name, display_name: displayName, description, default_settings: defaultSettings } = req.body;
+    if (!name || !displayName) {
+      return res.status(400).json({ error: 'name and display_name required' });
+    }
+    statements.insertFormat.run({
+      name,
+      display_name: displayName,
+      description,
+      default_settings: JSON.stringify(defaultSettings || {})
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create format' });
+  }
+});
+
+// -----------------------
+// Campaign Management
+// -----------------------
+router.post('/api/campaigns', (req, res) => {
+  try {
+    const { name, format_id: formatId } = req.body;
+    if (!name || !formatId) {
+      return res.status(400).json({ error: 'name and format_id required' });
+    }
+    const result = statements.insertCampaign.run({
+      name,
+      format_id: formatId,
+      targeting_settings: JSON.stringify(req.body.targeting_settings || {}),
+      schedule_settings: JSON.stringify(req.body.schedule_settings || {}),
+      budget_settings: JSON.stringify(req.body.budget_settings || {}),
+      status: req.body.status || 'draft'
+    });
+    res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create campaign' });
+  }
+});
+
+router.get('/api/campaigns', (req, res) => {
+  try {
+    const campaigns = statements.getCampaigns.all();
+    res.json(campaigns);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to list campaigns' });
+  }
+});
+
+router.put('/api/campaigns/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const existing = statements.getCampaignById.get(id);
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+
+    statements.updateCampaign.run({
+      id,
+      name: req.body.name || existing.name,
+      format_id: req.body.format_id || existing.format_id,
+      targeting_settings: JSON.stringify(req.body.targeting_settings || existing.targeting_settings || {}),
+      schedule_settings: JSON.stringify(req.body.schedule_settings || existing.schedule_settings || {}),
+      budget_settings: JSON.stringify(req.body.budget_settings || existing.budget_settings || {}),
+      status: req.body.status || existing.status
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update campaign' });
+  }
+});
+
+router.delete('/api/campaigns/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    statements.deleteCampaign.run(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete campaign' });
+  }
+});
+
+// -----------------------
+// Creative Management
+// -----------------------
+router.post('/api/creatives', (req, res) => {
+  try {
+    const { campaign_id: campaignId, name, creative_data: creativeData, preview_url: previewUrl } = req.body;
+    if (!campaignId || !name) {
+      return res.status(400).json({ error: 'campaign_id and name required' });
+    }
+    const result = statements.insertCreative.run({
+      campaign_id: campaignId,
+      name,
+      creative_data: JSON.stringify(creativeData || {}),
+      preview_url: previewUrl,
+      status: 'pending'
+    });
+    res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create creative' });
+  }
+});
+
+router.get('/api/creatives/:id/preview', (req, res) => {
+  try {
+    const creative = statements.getCreative.get(req.params.id);
+    if (!creative) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      id: creative.id,
+      creative_data: creative.creative_data ? JSON.parse(creative.creative_data) : {},
+      preview_url: creative.preview_url
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to preview creative' });
+  }
+});
+
+router.post('/api/creatives/:id/publish', (req, res) => {
+  try {
+    statements.updateCreativeStatus.run({ id: req.params.id, status: 'published' });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to publish creative' });
+  }
+});
+
 // GET /admin - Serve admin dashboard
 router.get('/', (req, res) => {
   try {
@@ -200,7 +341,7 @@ router.get('/health', (req, res) => {
     const totalEvents = db.prepare('SELECT COUNT(*) as count FROM analytics').get();
     const uniqueSlots = db.prepare('SELECT COUNT(DISTINCT slot) as count FROM analytics').get();
     const recentEvents = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics WHERE timestamp > datetime("now", "-1 hour")'
+      "SELECT COUNT(*) as count FROM analytics WHERE timestamp > datetime('now', '-1 hour')"
     ).get();
 
     res.json({
