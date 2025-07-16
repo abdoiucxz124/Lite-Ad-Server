@@ -8,6 +8,8 @@
     "dev": "nodemon src/server.js",
     "test": "node --test test",
     "test:coverage": "node --test --experimental-test-coverage test",
+    "test:e2e": "playwright test",
+    "test:production": "NODE_ENV=production node --test test",
     "lint": "eslint src --max-warnings=0",
     "lint:fix": "eslint src --fix",
     "docker:build": "docker build -t lite-ad-server:latest .",
@@ -45,7 +47,8 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
     "nodemon": "^3.0.2",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "@playwright/test": "^1.42.1"
   },
   "engines": {
     "node": ">=20.0.0",

@@ -1,20 +1,50 @@
-# Build stage
-FROM node:20-alpine AS builder
+# Multi-stage production Dockerfile
+FROM node:18-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Minimal production stage using distroless
-FROM gcr.io/distroless/nodejs20-debian12
+# Production stage
+FROM node:18-alpine AS production
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodeuser -u 1001
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    sqlite \
+    curl \
+    && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
-# Copy minimal required files
+# Copy application files
 COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
-COPY src ./src
+COPY --chown=nodeuser:nodejs src/ ./src/
+COPY --chown=nodeuser:nodejs package.json ./
+COPY --chown=nodeuser:nodejs .env.example ./.env
 
-# Switch to non-root user (distroless already uses non-root)
-USER 1001
+# Create data directory
+RUN mkdir -p data && chown nodeuser:nodejs data
 
-EXPOSE 4000
-CMD ["src/server.js"]
+# Switch to non-root user
+USER nodeuser
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start application
+CMD ["node", "src/server.js"]
