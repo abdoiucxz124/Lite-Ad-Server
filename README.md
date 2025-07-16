@@ -56,6 +56,10 @@ codex "implement JWT authentication for admin dashboard"
 
 📖 **See [CODEX_SETUP.md](./CODEX_SETUP.md) for detailed setup instructions**
 
+
+## Deployment
+For deployment options and runbooks, see [docs/deployment.md](docs/deployment.md) and [docs/runbook.md](docs/runbook.md).
+
 ## 📋 Next Features
 
 Check [NEXT_FEATURES.md](./NEXT_FEATURES.md) for upcoming enhancements:
