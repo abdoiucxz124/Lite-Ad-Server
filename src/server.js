@@ -3,6 +3,7 @@ const morgan = require('morgan');
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
+const session = require('express-session');
 require('dotenv').config();
 
 const adRoutes = require('./routes/ad');
@@ -43,6 +44,17 @@ app.use(morgan(logFormat));
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Session management
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'change_me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production'
+  }
+}));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -99,19 +111,21 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Lite Ad Server running on port ${PORT}`);
-  console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-  console.log(`📈 Health check: http://localhost:${PORT}/health`);
-});
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
-    process.exit(0);
+if (require.main === module) {
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Lite Ad Server running on port ${PORT}`);
+    console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
+    console.log(`📈 Health check: http://localhost:${PORT}/health`);
   });
-});
+
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+      process.exit(0);
+    });
+  });
+}
 
 module.exports = app;
