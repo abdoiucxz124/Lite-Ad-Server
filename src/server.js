@@ -8,6 +8,7 @@ require('dotenv').config();
 const adRoutes = require('./routes/ad');
 const trackRoutes = require('./routes/track');
 const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/ad', adRoutes);
 app.use('/api/track', trackRoutes);
 app.use('/admin', adminRoutes);

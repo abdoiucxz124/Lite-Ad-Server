@@ -2,34 +2,24 @@ const express = require('express');
 const path = require('path');
 const router = express.Router();
 const { statements } = require('../config');
+const jwt = require('jsonwebtoken');
 
-// Optional basic authentication middleware
-const basicAuth = (req, res, next) => {
-  const adminPassword = process.env.ADMIN_PASSWORD;
-
-  if (!adminPassword) {
-    return next(); // No auth required if no password set
+// JWT authentication middleware
+const authenticateJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const auth = req.headers.authorization;
-
-  if (!auth || !auth.startsWith('Basic ')) {
-    res.set('WWW-Authenticate', 'Basic realm="Admin Dashboard"');
-    return res.status(401).json({ error: 'Authentication required' });
+  const token = authHeader.slice(7);
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch (err) {
+    console.error('JWT verification failed:', err);
+    res.status(401).json({ error: 'Invalid token' });
   }
-
-  const credentials = Buffer.from(auth.slice(6), 'base64').toString().split(':');
-  const password = credentials[1];
-
-  if (password !== adminPassword) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  next();
 };
-
-// Apply basic auth to all admin routes
-router.use(basicAuth);
 
 // GET /admin - Serve admin dashboard
 router.get('/', (req, res) => {
@@ -40,6 +30,9 @@ router.get('/', (req, res) => {
     res.status(500).json({ error: 'Failed to load admin dashboard' });
   }
 });
+
+// Protect subsequent routes
+router.use(authenticateJWT);
 
 // GET /admin/data - Get analytics summary
 router.get('/data', (req, res) => {
