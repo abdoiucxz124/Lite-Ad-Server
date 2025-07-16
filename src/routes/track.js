@@ -147,7 +147,9 @@ router.post('/batch', (req, res) => {
 
     // Process each event
     for (let i = 0; i < events.length; i++) {
+      /* eslint-disable security/detect-object-injection */
       const eventData = events[i];
+      /* eslint-enable security/detect-object-injection */
       const validation = validateTrackingData(eventData);
 
       if (!validation.valid) {

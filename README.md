@@ -31,7 +31,7 @@ docker compose up -d        # or: npm install && npm start
 2. **Tracking Service**
    - Needs write access to `DATABASE_PATH` from `.env`.
 3. **Admin Dashboard**
-   - OPTIONAL: protect with basic‑auth / reverse‑proxy in production.
+   - Protected with session-based authentication. Configure credentials in `.env`.
 
 Everything is self‑contained—no placeholders.
 

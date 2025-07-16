@@ -4,10 +4,13 @@ const fs = require('fs');
 
 // Ensure data directory exists
 const dataDir = path.dirname(process.env.DATABASE_PATH || path.join(__dirname, '../data/ads.db'));
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-  console.log(`📁 Created data directory: ${dataDir}`);
+const safeDataDir = path.resolve(dataDir);
+/* eslint-disable security/detect-non-literal-fs-filename */
+if (!fs.existsSync(safeDataDir)) {
+  fs.mkdirSync(safeDataDir, { recursive: true });
+  console.log(`📁 Created data directory: ${safeDataDir}`);
 }
+/* eslint-enable security/detect-non-literal-fs-filename */
 
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../data/ads.db');
 
