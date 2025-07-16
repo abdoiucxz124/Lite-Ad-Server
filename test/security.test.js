@@ -8,7 +8,7 @@ describe('Security Tests', () => {
   before(() => {
     process.env.DATABASE_PATH = ':memory:';
     process.env.RATE_LIMIT = '5';
-    app = require('../src/server');
+    app = require('../src/server').app;
   });
 
   test('rejects invalid slot input', async () => {

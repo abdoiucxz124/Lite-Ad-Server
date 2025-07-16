@@ -8,7 +8,7 @@ let app;
 describe('Performance Tests', () => {
   before(() => {
     process.env.DATABASE_PATH = ':memory:';
-    app = require('../src/server');
+    app = require('../src/server').app;
   });
 
   test('ad endpoint handles load quickly', async () => {
