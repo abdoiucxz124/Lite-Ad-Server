@@ -128,4 +128,3 @@ describe('Ad Tag Generation', () => {
   });
 });
 
-console.log('✅ All tests completed successfully!'); 
