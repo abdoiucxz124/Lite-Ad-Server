@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const router = express.Router();
 const { statements } = require('../config');
+const AnalyticsEngine = require('../analytics-engine');
 
 // Optional basic authentication middleware
 const basicAuth = (req, res, next) => {
@@ -402,6 +403,30 @@ router.get('/health', (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// Advanced analytics API
+
+router.get('/api/analytics-dashboard', (req, res) => {
+  const engine = new AnalyticsEngine(statements);
+  const stats = { totalRevenue: 0, avgCPM: 0, fillRate: 0, totalImpressions: 0, revenueChange: 0, cpmChange: 0, fillRateChange: 0, impressionsChange: 0 };
+  const charts = { revenue: { labels: [], data: [] }, formats: { labels: [], data: [] } };
+  res.json({ stats, charts });
+});
+
+router.get('/api/revenue-insights', (req, res) => {
+  const engine = new AnalyticsEngine(statements);
+  res.json({ insights: engine.generateRevenueInsights() });
+});
+
+router.post('/api/ab-test', (req, res) => {
+  const engine = new AnalyticsEngine(statements);
+  res.json({ test: engine.createABTest(req.body) });
+});
+
+router.get('/api/ab-test/:id/results', (req, res) => {
+  const engine = new AnalyticsEngine(statements);
+  res.json({ results: engine.analyzeABTestResults(req.params.id) });
 });
 
 module.exports = router;

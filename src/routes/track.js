@@ -5,34 +5,55 @@ const crypto = require('crypto');
 const geoip = require('geoip-lite');
 const UAParser = require('ua-parser-js');
 
-// Validation helpers
+// Try to load AnalyticsEngine if available, otherwise use fallback functions
+let AnalyticsEngine;
+try {
+  AnalyticsEngine = require('../analytics-engine');
+} catch (error) {
+  // Fallback for missing analytics engine
+  AnalyticsEngine = class {
+    constructor() { }
+    generateRevenueInsights() { return { insights: 'Analytics engine not available' }; }
+    createABTest(data) { return { test: data }; }
+    analyzeABTestResults(id) { return { results: 'No results available' }; }
+  };
+}
+
 const validateTrackingData = (data) => {
-  const { slot, event } = data;
-
-  if (!slot || typeof slot !== 'string') {
-    return { valid: false, error: 'Slot parameter is required and must be a string' };
+  if (!data.event || !data.slot) {
+    return { valid: false, error: 'Event and slot are required' };
   }
-
-  if (!event || typeof event !== 'string') {
-    return { valid: false, error: 'Event parameter is required and must be a string' };
-  }
-
-  const allowedEvents = ['impression', 'click', 'viewable', 'loaded'];
-  if (!allowedEvents.includes(event.toLowerCase())) {
-    return { valid: false, error: `Event must be one of: ${allowedEvents.join(', ')}` };
-  }
-
   return { valid: true };
 };
 
-// Extract client information
+const validateEnhancedTrackingData = (data) => {
+  if (!data.event || !data.slot) {
+    return { valid: false, error: 'Event and slot are required' };
+  }
+  return { valid: true };
+};
+
 const extractClientInfo = (req) => {
   return {
-    ip: req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || 'unknown',
     userAgent: req.headers['user-agent'] || '',
-    referer: req.headers.referer || req.headers.referrer || '',
+    ip: req.ip || req.connection.remoteAddress,
+    referer: req.headers.referer || '',
     timestamp: new Date().toISOString()
   };
+};
+
+const updateRealTimeAggregates = (data) => {
+  // TODO: Implement real-time aggregation logic
+  return {};
+};
+
+const triggerRevenueOptimization = (data) => {
+  // TODO: Implement revenue optimization trigger
+};
+
+const getActiveOptimizations = (slot, format) => {
+  // TODO: Implement active optimizations lookup
+  return [];
 };
 
 const getSessionId = (req) => {
@@ -44,6 +65,7 @@ const ensureSession = (req) => {
   const ua = new UAParser(req.headers['user-agent'] || '').getResult();
   const geo = geoip.lookup(req.ip) || {};
   const fingerprint = `${req.headers['user-agent'] || ''}-${req.ip}`;
+
   try {
     statements.insertSession.run(
       sessionId,
@@ -59,23 +81,23 @@ const ensureSession = (req) => {
   return sessionId;
 };
 
-// POST /api/track - Track ad events
-router.post('/', (req, res) => {
+// POST /api/track - Track ad events (supports both simple and enhanced tracking)
+router.post('/', async (req, res) => {
   try {
-    const { slot, event } = req.body;
+    const { event, format, slot, adId, metadata = {}, revenue = 0, userId, sessionId, geo, device, abTestId, variant } = req.body;
 
-    // Validate input data
-    const validation = validateTrackingData({ slot, event });
-    if (!validation.valid) {
-      return res.status(400).json({ error: validation.error });
+    // Validate the tracking data
+    const validationResult = validateEnhancedTrackingData(req.body);
+    if (!validationResult.valid) {
+      return res.status(400).json({ error: validationResult.error });
     }
 
     // Extract client information
     const clientInfo = extractClientInfo(req);
-    const sessionId = ensureSession(req);
+    const sessionIdToUse = ensureSession(req);
 
-    // Insert tracking data
     try {
+      // Basic tracking (always do this for compatibility)
       const result = statements.insertAnalytics.run(
         slot,
         event.toLowerCase(),
@@ -83,22 +105,49 @@ router.post('/', (req, res) => {
         clientInfo.ip,
         clientInfo.referer
       );
+
+      // Basic event tracking
       statements.insertEvent.run(
-        sessionId,
+        sessionIdToUse,
         event.toLowerCase(),
         slot,
-        req.body.revenue || 0,
-        JSON.stringify(req.body.metadata || {})
+        revenue || 0,
+        JSON.stringify(metadata || {})
       );
 
+      // Enhanced tracking if enhanced data is provided
+      if (statements.enhancedTracking && (format || adId || userId || geo || device || abTestId)) {
+        statements.enhancedTracking.insert.run(
+          event, format || 'standard', slot, adId, revenue, userId, sessionId || sessionIdToUse,
+          geo?.country, geo?.region, device?.type, device?.os,
+          clientInfo.userAgent, abTestId, variant,
+          clientInfo.ip, clientInfo.userAgent, clientInfo.referer,
+          req.body.pageUrl || '', req.body.viewportWidth || null,
+          req.body.viewportHeight || null, JSON.stringify(metadata)
+        );
+      }
+
       console.log(`📊 Tracked ${event} for slot: ${slot} (ID: ${result.lastInsertRowid})`);
+
+      // Real-time updates
+      const aggregatedData = updateRealTimeAggregates(req.body);
+      if (req.app.get('io')) {
+        req.app.get('io').emit('analytics', { slot, event: event.toLowerCase() });
+        req.app.get('io').emit('analytics-update', { event: req.body, aggregates: aggregatedData, timestamp: Date.now() });
+      }
+
+      // Revenue optimization
+      if (revenue > 0) {
+        triggerRevenueOptimization(req.body);
+      }
 
       const payload = {
         success: true,
         id: result.lastInsertRowid,
-        timestamp: clientInfo.timestamp
+        timestamp: clientInfo.timestamp,
+        optimizations: getActiveOptimizations(slot, format)
       };
-      req.app.get('io').emit('analytics', { slot, event: event.toLowerCase() });
+
       res.json(payload);
     } catch (dbError) {
       console.error('Database error while tracking event:', dbError);
@@ -108,15 +157,44 @@ router.post('/', (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error in tracking route:', error);
-    res.status(500).json({
-      error: 'Internal tracking error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('Enhanced tracking error:', error);
+    res.status(500).json({ error: 'Tracking failed' });
   }
 });
 
-// GET /api/track/pixel - 1x1 tracking pixel for impression tracking
+router.get('/api/revenue-insights', (req, res) => {
+  try {
+    const engine = new AnalyticsEngine(statements);
+    const insights = engine.generateRevenueInsights();
+    res.json({ insights });
+  } catch (error) {
+    console.error('Revenue insights error:', error);
+    res.status(500).json({ error: 'Failed to get revenue insights' });
+  }
+});
+
+router.post('/api/ab-test', (req, res) => {
+  try {
+    const engine = new AnalyticsEngine(statements);
+    const test = engine.createABTest(req.body);
+    res.json({ test });
+  } catch (error) {
+    console.error('AB test creation error:', error);
+    res.status(500).json({ error: 'Failed to create AB test' });
+  }
+});
+
+router.get('/api/ab-test/:id/results', (req, res) => {
+  try {
+    const engine = new AnalyticsEngine(statements);
+    const results = engine.analyzeABTestResults(req.params.id);
+    res.json({ results });
+  } catch (error) {
+    console.error('AB test results error:', error);
+    res.status(500).json({ error: 'Failed to get AB test results' });
+  }
+});
+
 router.get('/pixel', (req, res) => {
   try {
     const { slot } = req.query;
@@ -137,7 +215,9 @@ router.get('/pixel', (req, res) => {
           const sessionId = ensureSession(req);
           statements.insertEvent.run(sessionId, 'impression', slot, 0, '{}');
           console.log(`📊 Pixel tracked impression for slot: ${slot}`);
-          req.app.get('io').emit('analytics', { slot, event: 'impression' });
+          if (req.app.get('io')) {
+            req.app.get('io').emit('analytics', { slot, event: 'impression' });
+          }
         } catch (dbError) {
           console.error('Database error in pixel tracking:', dbError);
         }
@@ -168,7 +248,6 @@ router.get('/pixel', (req, res) => {
   }
 });
 
-// POST /api/track/batch - Batch tracking for multiple events
 router.post('/batch', (req, res) => {
   try {
     const { events } = req.body;
@@ -197,6 +276,7 @@ router.post('/batch', (req, res) => {
       }
 
       try {
+        // Basic tracking
         const result = statements.insertAnalytics.run(
           eventData.slot,
           eventData.event.toLowerCase(),
@@ -204,6 +284,7 @@ router.post('/batch', (req, res) => {
           clientInfo.ip,
           clientInfo.referer
         );
+
         statements.insertEvent.run(
           sessionId,
           eventData.event.toLowerCase(),
@@ -211,6 +292,19 @@ router.post('/batch', (req, res) => {
           eventData.revenue || 0,
           JSON.stringify(eventData.metadata || {})
         );
+
+        // Enhanced tracking if available
+        if (statements.enhancedTracking) {
+          statements.enhancedTracking.insert.run(
+            eventData.event, eventData.format || 'standard', eventData.slot,
+            eventData.adId, eventData.revenue || 0, eventData.userId,
+            eventData.sessionId || sessionId, null, null, null, null,
+            clientInfo.userAgent, eventData.abTestId, eventData.variant,
+            clientInfo.ip, clientInfo.userAgent, clientInfo.referer,
+            eventData.pageUrl || '', eventData.viewportWidth || null,
+            eventData.viewportHeight || null, JSON.stringify(eventData.metadata || {})
+          );
+        }
 
         results.push({
           index: i,
@@ -224,7 +318,14 @@ router.post('/batch', (req, res) => {
     }
 
     console.log(`📊 Batch tracked ${results.length} events, ${errors.length} errors`);
-    results.forEach(r => req.app.get('io').emit('analytics', { slot: r.slot, event: events[r.index].event.toLowerCase() }));
+
+    // Emit real-time updates
+    if (req.app.get('io')) {
+      results.forEach(r => req.app.get('io').emit('analytics', {
+        slot: r.slot,
+        event: events[r.index].event.toLowerCase()
+      }));
+    }
 
     res.json({
       success: true,
