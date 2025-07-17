@@ -4,12 +4,18 @@ const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
+const { metricsMiddleware, getMetrics } = require('./monitoring');
 
 const adRoutes = require('./routes/ad');
 const trackRoutes = require('./routes/track');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
+
+// Metrics middleware
+if (process.env.ENABLE_METRICS === 'true') {
+  app.use(metricsMiddleware);
+}
 
 // Security middleware
 app.use(helmet({
@@ -48,13 +54,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Rate limiting
-const rateLimit = parseInt(process.env.RATE_LIMIT) || 100;
+const rateLimit = parseInt(process.env.RATE_LIMIT_REQUESTS || process.env.RATE_LIMIT || 100);
+const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || 60000);
 const requests = new Map();
 app.use((req, res, next) => {
   const ip = req.ip || req.connection.remoteAddress;
   const now = Date.now();
-  const windowMs = 60000; // 1 minute
-
   if (!requests.has(ip)) {
     requests.set(ip, []);
   }
@@ -80,6 +85,14 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Metrics endpoint on main server
+if (process.env.ENABLE_METRICS === 'true' && process.env.METRICS_PORT === undefined) {
+  app.get('/metrics', (req, res) => {
+    res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.end(getMetrics());
+  });
+}
+
 // API routes
 app.use('/api/ad', adRoutes);
 app.use('/api/track', trackRoutes);
@@ -101,6 +114,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 
 let server;
+let metricsServer;
 
 if (require.main === module) {
   server = app.listen(PORT, () => {
@@ -109,10 +123,25 @@ if (require.main === module) {
     console.log(`📈 Health check: http://localhost:${PORT}/health`);
   });
 
+  if (process.env.ENABLE_METRICS === 'true' && process.env.METRICS_PORT) {
+    const metricsApp = express();
+    metricsApp.get('/metrics', (req, res) => {
+      res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+      res.end(getMetrics());
+    });
+    const metricsPort = parseInt(process.env.METRICS_PORT, 10) || 9090;
+    metricsServer = metricsApp.listen(metricsPort, () => {
+      console.log(`📈 Metrics server running on port ${metricsPort}`);
+    });
+  }
+
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
     server.close(() => {
+      if (metricsServer) {
+        metricsServer.close();
+      }
       console.log('Process terminated');
       process.exit(0);
     });
