@@ -1,0 +1,53 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": [
+    "javascript",
+    "typescript"
+  ],
+  "files.associations": {
+    "*.md": "markdown",
+    "*.mdc": "markdown",
+    ".cursorrules": "markdown",
+    ".env.example": "dotenv"
+  },
+  "markdown.preview.scrollPreviewWithEditor": true,
+  "markdown.preview.markEditorSelection": true,
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/data/*.db": false,
+    "**/.git": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/data": true,
+    "**/.git": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml",
+    "docker-compose.yml": "docker-compose.*.yml, Dockerfile*",
+    "README.md": "AGENTS.md, CONVERSATION_SUMMARY.md, PROJECT_STATE_TRACKING.md, BUILD_ARCHITECTURE_GUIDE.md, MEMORY_CONTEXT_SYSTEM.md, CONTEXT_CHECKLIST.md",
+    ".cursor": ".cursorrules"
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "npm.enableScriptExplorer": true,
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "emmet.includeLanguages": {
+    "markdown": "html"
+  },
+  "workbench.startupEditor": "none",
+  "editor.minimap.enabled": true,
+  "editor.wordWrap": "on",
+  "editor.rulers": [
+    80,
+    120
+  ],
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true
+}

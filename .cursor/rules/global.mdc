@@ -1,0 +1,668 @@
+---
+alwaysApply: true
+---
+
+# Global Cursor AI Rules - Advanced Ad Server Project
+
+## 🎯 PROJECT CONTEXT
+
+**Project**: Lite Ad Server with Advanced Features (Enterprise-Grade)
+**Status**: 95% Production Ready - Enterprise Ad Management Platform
+**Current Branch**: latest-features
+
+@technologystack.md
+@directorystructure.md
+@example.mdc
+
+### CRITICAL PROJECT STATE
+- **6 Major Codex Tasks Completed**: All implemented and merged successfully
+- **Test Status**: 5/5 basic tests passing
+- **Code Quality**: A+ rating with zero ESLint errors
+- **Production Readiness**: 95% complete with Kubernetes deployment ready
+- **File Count**: 50+ files, 3,000+ new lines of code
+
+## 🏗️ COMPLETED MAJOR FEATURES
+
+### ✅ Advanced Admin Dashboard (WebSocket-Enabled)
+- Real-time campaign management with Socket.io
+- Live analytics updates and monitoring
+- Campaign CRUD operations with instant feedback
+- Advanced filtering and export capabilities
+
+### ✅ Multiple Ad Formats Support
+- **PushDown**: Expandable display ads
+- **Interscroller**: Scroll-triggered animations
+- **Popup**: Modal-style advertisements
+- **In-page**: Standard banner integration
+- **Interstitial**: Full-screen takeovers
+
+### ✅ Unified Design System
+- CSS custom properties with theme variables
+- Component library with reusable elements
+- Responsive design patterns (mobile-first)
+- Dark/light mode support infrastructure
+
+### ✅ Tag Management System
+- JavaScript SDK for easy integration
+- WordPress plugin for CMS integration
+- Tag validation and preview functionality
+- Cross-platform compatibility testing
+
+### ✅ Advanced Analytics Engine
+- GeoIP tracking with location insights
+- Revenue monitoring and reporting
+- User behavior analytics
+- Real-time performance metrics
+
+### ✅ Production Deployment Ready
+- Kubernetes manifests and configurations
+- CI/CD pipelines with GitHub Actions
+- Docker multi-stage optimized builds
+- Monitoring and logging infrastructure
+
+## 🛠️ DEVELOPMENT STANDARDS
+
+### Code Quality Requirements (MANDATORY)
+- **ESLint**: Zero errors, zero warnings (`npm run lint`)
+- **Tests**: All tests must pass (`npm test`)
+- **Docker**: Successful build under 100MB
+- **Security**: Input validation, rate limiting, prepared statements
+- **Performance**: Sub-200ms response times for API endpoints
+
+### Coding Conventions
+- **JavaScript**: Modern ES6+ with async/await patterns
+- **Database**: Prepared statements only, no string concatenation
+- **API Design**: RESTful conventions with proper HTTP status codes
+- **Error Handling**: Comprehensive try-catch with user-friendly messages
+- **Logging**: Structured logging with Winston or similar
+- **Comments**: JSDoc format for functions, inline for complex logic
+
+### File Naming Standards
+- **Routes**: `kebab-case.js` (e.g., `campaign-management.js`)
+- **Components**: `PascalCase.js` (e.g., `AdDisplayComponent.js`)
+- **Utilities**: `camelCase.js` (e.g., `dateFormatting.js`)
+- **Database**: `snake_case` tables, `camelCase` fields
+- **Environment**: `UPPER_CASE` variables
+
+## 🏛️ ARCHITECTURE GUIDELINES
+
+### Database Design (SQLite with Better-SQLite3)
+- **WAL Mode**: Enabled for concurrent read/write
+- **Prepared Statements**: All database operations
+- **Indexing**: Proper indexes for analytics queries
+- **Transactions**: Batch operations for performance
+- **Migrations**: Version-controlled schema changes
+
+### API Design Principles
+- **Validation**: Joi or similar for input validation
+- **Rate Limiting**: Express-rate-limit middleware
+- **CORS**: Configurable origins via environment
+- **Security**: Helmet.js for security headers
+- **Authentication**: JWT-based for admin operations
+- **Pagination**: Cursor-based for large datasets
+
+### Frontend Architecture
+- **Progressive Enhancement**: Works without JavaScript
+- **Responsive Design**: Mobile-first with CSS Grid/Flexbox
+- **Component-Based**: Reusable UI components
+- **State Management**: Event-driven with custom events
+- **Performance**: Lazy loading and code splitting
+
+## 🧪 TESTING REQUIREMENTS
+
+### Test Coverage Expectations
+- **Unit Tests**: 80%+ coverage for business logic
+- **Integration Tests**: API endpoints with real database
+- **E2E Tests**: Critical user journeys
+- **Performance Tests**: Load testing for high traffic
+- **Security Tests**: SQL injection, XSS prevention
+
+### Test Commands
+```bash
+npm test                    # Run all tests
+npm run test:unit          # Unit tests only
+npm run test:integration   # Integration tests
+npm run test:e2e          # End-to-end tests
+npm run test:coverage     # Coverage report
+npm run test:security     # Security vulnerability scan
+```
+
+## 🚀 DEPLOYMENT CONFIGURATION
+
+### Environment Variables (Production)
+```bash
+# Server Configuration
+NODE_ENV=production
+PORT=3000
+DATABASE_PATH=/data/ads.db
+
+# Authentication & Security
+JWT_SECRET=your-secure-jwt-secret
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=secure-password
+RATE_LIMIT_REQUESTS=1000
+RATE_LIMIT_WINDOW_MS=60000
+
+# Google Ad Manager Integration
+GOOGLE_AD_MANAGER_NETWORK_ID=123456789
+GOOGLE_AD_MANAGER_API_KEY=your-api-key
+
+# Analytics & Monitoring
+GEOIP_LICENSE_KEY=your-maxmind-license
+ANALYTICS_RETENTION_DAYS=90
+MONITORING_ENABLED=true
+
+# External Services
+REDIS_URL=redis://localhost:6379
+ELASTICSEARCH_URL=http://localhost:9200
+```
+
+### Deployment Targets
+- **Kubernetes**: Production-ready with auto-scaling
+- **Docker Compose**: Development and staging
+- **Cloud Platforms**: AWS EKS, GCP GKE, Azure AKS
+- **Edge Deployment**: Cloudflare Workers, Vercel Edge
+
+## 🔒 SECURITY GUIDELINES
+
+### Security Requirements (NON-NEGOTIABLE)
+- **Input Validation**: All user inputs validated and sanitized
+- **SQL Injection Prevention**: Prepared statements only
+- **XSS Protection**: Content Security Policy headers
+- **CSRF Protection**: CSRF tokens for state-changing operations
+- **Rate Limiting**: Per-IP and per-user limits
+- **Authentication**: Strong password policies and JWT security
+- **Logging**: Security events logged for audit
+
+### Security Implementation Patterns
+```javascript
+// Input validation example
+const Joi = require('joi');
+const schema = Joi.object({
+  campaignName: Joi.string().min(3).max(100).required(),
+  budget: Joi.number().positive().required()
+});
+
+// Prepared statement example
+const stmt = db.prepare('SELECT * FROM campaigns WHERE id = ?');
+const campaign = stmt.get(campaignId);
+```
+
+## 📊 FEATURE IMPLEMENTATION GUIDELINES
+
+### Google Ad Manager Integration
+- **GPT Library**: Use latest Google Publisher Tag
+- **Ad Sizes**: Support IAB standard sizes + custom
+- **Targeting**: Geographic, demographic, behavioral
+- **Reporting**: Integration with Google Analytics
+- **Preview Mode**: Testing environment for ads
+
+### Analytics Implementation
+- **Real-time**: WebSocket updates for live metrics
+- **Batch Processing**: Efficient data aggregation
+- **Data Retention**: Configurable retention policies
+- **Export Formats**: CSV, JSON, PDF reports
+- **Privacy Compliance**: GDPR/CCPA compliant tracking
+
+### Campaign Management
+- **CRUD Operations**: Full lifecycle management
+- **Scheduling**: Start/end date automation
+- **Targeting**: Audience segmentation
+- **Budget Management**: Spend tracking and limits
+- **A/B Testing**: Variant testing capabilities
+
+## 🔧 DEVELOPMENT WORKFLOW
+
+### Local Development Setup
+```bash
+# Clone and setup
+git clone <repository>
+cd lite-ad-server-with-agents
+cp .env.example .env
+npm ci
+
+# Start development
+npm run dev              # Development server with hot reload
+npm run docker:dev       # Docker development environment
+npm run test:watch       # Tests in watch mode
+```
+
+### Code Quality Checklist
+Before any commit or pull request:
+```bash
+npm run lint            # ESLint check
+npm run test           # All tests pass
+npm run build          # Production build successful
+npm run docker:build   # Docker image builds
+npm run security       # Security vulnerability scan
+```
+
+## 🎯 CURSOR AI AGENT INSTRUCTIONS
+
+### When Working on This Project:
+
+1. **Context Awareness**: This is a production-ready enterprise ad server, not a simple prototype
+2. **Quality Standards**: Maintain A+ code quality with zero ESLint errors
+3. **Architecture Consistency**: Follow established MVC patterns and conventions
+4. **Security First**: Always implement proper validation and security measures
+5. **Performance Optimization**: Consider scalability in all implementations
+6. **Test Coverage**: Write tests for any new functionality
+7. **Documentation**: Update relevant documentation for changes
+
+### Preferred Patterns:
+- **Error Handling**: Use try-catch with proper error responses
+- **Database Operations**: Always use prepared statements
+- **API Design**: RESTful with proper HTTP status codes
+- **Async Operations**: Prefer async/await over promises
+- **Configuration**: Environment variables for all configurable values
+
+### Avoid These Patterns:
+- String concatenation for SQL queries
+- Blocking synchronous operations
+- Hard-coded configuration values
+- Missing input validation
+- Inconsistent error response formats
+
+## 📚 REFERENCE DOCUMENTATION
+
+### Modern Cursor Project Rules
+- [.cursor/rules/global.mdc](./.cursor/rules/global.mdc) - This file - Main AI rules
+- [.cursor/rules/technologystack.md](./.cursor/rules/technologystack.md) - Technology stack details
+- [.cursor/rules/directorystructure.md](./.cursor/rules/directorystructure.md) - Project structure
+- [.cursor/rules/example.mdc](./.cursor/rules/example.mdc) - Code examples and patterns
+
+### Internal Documentation
+- [AGENTS.md](./AGENTS.md) - Detailed Codex instructions
+- [CONVERSATION_SUMMARY.md](./CONVERSATION_SUMMARY.md) - Complete project history
+- [PROJECT_STATE_TRACKING.md](./PROJECT_STATE_TRACKING.md) - Current status dashboard
+- [BUILD_ARCHITECTURE_GUIDE.md](./BUILD_ARCHITECTURE_GUIDE.md) - Technical architecture
+- [MEMORY_CONTEXT_SYSTEM.md](./MEMORY_CONTEXT_SYSTEM.md) - Context management
+- [CONTEXT_CHECKLIST.md](./CONTEXT_CHECKLIST.md) - Quick reference guide
+
+### Core Project Files
+- [package.json](./package.json) - Dependencies and scripts
+- [src/server.js](./src/server.js) - Express server entry point
+- [src/config.js](./src/config.js) - Database configuration
+- [src/routes/](./src/routes/) - API route handlers
+- [test/](./test/) - Test suite
+- [k8s/](./k8s/) - Kubernetes deployment configs
+- [.github/workflows/](.//.github/workflows/) - CI/CD pipelines
+
+## 🎛️ CURSOR IDE SPECIFIC INSTRUCTIONS
+
+### File Navigation & Context
+- **Documentation First**: Always read relevant documentation files before making changes
+- **Project Structure**: Use the file tree in the sidebar to navigate between components
+- **Context Awareness**: Reference documentation files for quick status checks
+- **Testing**: Run tests using the integrated terminal before code changes
+
+### Recommended Workflow in Cursor IDE
+1. **Start Here**: Open PROJECT_STATE_TRACKING.md for current status
+2. **Architecture Review**: Check BUILD_ARCHITECTURE_GUIDE.md for technical details
+3. **Code Standards**: Follow patterns in AGENTS.md for implementation
+4. **Testing**: Use `Ctrl+Shift+`` to open terminal and run `npm test`
+5. **Quality Check**: Run `npm run lint` before committing changes
+
+### Key Keyboard Shortcuts for This Project
+- `Ctrl+P` - Quick file search (use for documentation files)
+- `Ctrl+Shift+F` - Global search across project
+- `Ctrl+`` - Toggle integrated terminal
+- `F12` - Go to definition (useful for API routes)
+- `Shift+F12` - Find all references
+
+## 🚨 CRITICAL REMINDERS
+
+### Project State
+- **This is NOT a new project** - it's 95% complete with enterprise features
+- **6 major development phases completed** - all core functionality implemented
+- **Production deployment ready** - Kubernetes configs and CI/CD in place
+- **Comprehensive test coverage** - all tests currently passing
+
+### Next Phase Considerations
+- Performance optimization and monitoring
+- Advanced targeting and personalization
+- Machine learning integration for ad optimization
+- Multi-tenant support for enterprise clients
+- Advanced reporting and business intelligence
+
+### Quality Gates
+- All code changes must pass existing test suite
+- New features require comprehensive test coverage
+- Security review required for authentication/authorization changes
+- Performance impact assessment for core ad serving paths
+
+---
+
+**Remember**: This is a sophisticated, production-ready ad management platform. Treat it with the care and attention appropriate for enterprise software that handles real advertising campaigns and revenue.
+# Global Cursor AI Rules - Advanced Ad Server Project
+
+## 🎯 PROJECT CONTEXT
+
+**Project**: Lite Ad Server with Advanced Features (Enterprise-Grade)
+**Status**: 95% Production Ready - Enterprise Ad Management Platform
+**Current Branch**: latest-features
+
+@technologystack.md
+@directorystructure.md
+@example.mdc
+
+### CRITICAL PROJECT STATE
+- **6 Major Codex Tasks Completed**: All implemented and merged successfully
+- **Test Status**: 5/5 basic tests passing
+- **Code Quality**: A+ rating with zero ESLint errors
+- **Production Readiness**: 95% complete with Kubernetes deployment ready
+- **File Count**: 50+ files, 3,000+ new lines of code
+
+## 🏗️ COMPLETED MAJOR FEATURES
+
+### ✅ Advanced Admin Dashboard (WebSocket-Enabled)
+- Real-time campaign management with Socket.io
+- Live analytics updates and monitoring
+- Campaign CRUD operations with instant feedback
+- Advanced filtering and export capabilities
+
+### ✅ Multiple Ad Formats Support
+- **PushDown**: Expandable display ads
+- **Interscroller**: Scroll-triggered animations
+- **Popup**: Modal-style advertisements
+- **In-page**: Standard banner integration
+- **Interstitial**: Full-screen takeovers
+
+### ✅ Unified Design System
+- CSS custom properties with theme variables
+- Component library with reusable elements
+- Responsive design patterns (mobile-first)
+- Dark/light mode support infrastructure
+
+### ✅ Tag Management System
+- JavaScript SDK for easy integration
+- WordPress plugin for CMS integration
+- Tag validation and preview functionality
+- Cross-platform compatibility testing
+
+### ✅ Advanced Analytics Engine
+- GeoIP tracking with location insights
+- Revenue monitoring and reporting
+- User behavior analytics
+- Real-time performance metrics
+
+### ✅ Production Deployment Ready
+- Kubernetes manifests and configurations
+- CI/CD pipelines with GitHub Actions
+- Docker multi-stage optimized builds
+- Monitoring and logging infrastructure
+
+## 🛠️ DEVELOPMENT STANDARDS
+
+### Code Quality Requirements (MANDATORY)
+- **ESLint**: Zero errors, zero warnings (`npm run lint`)
+- **Tests**: All tests must pass (`npm test`)
+- **Docker**: Successful build under 100MB
+- **Security**: Input validation, rate limiting, prepared statements
+- **Performance**: Sub-200ms response times for API endpoints
+
+### Coding Conventions
+- **JavaScript**: Modern ES6+ with async/await patterns
+- **Database**: Prepared statements only, no string concatenation
+- **API Design**: RESTful conventions with proper HTTP status codes
+- **Error Handling**: Comprehensive try-catch with user-friendly messages
+- **Logging**: Structured logging with Winston or similar
+- **Comments**: JSDoc format for functions, inline for complex logic
+
+### File Naming Standards
+- **Routes**: `kebab-case.js` (e.g., `campaign-management.js`)
+- **Components**: `PascalCase.js` (e.g., `AdDisplayComponent.js`)
+- **Utilities**: `camelCase.js` (e.g., `dateFormatting.js`)
+- **Database**: `snake_case` tables, `camelCase` fields
+- **Environment**: `UPPER_CASE` variables
+
+## 🏛️ ARCHITECTURE GUIDELINES
+
+### Database Design (SQLite with Better-SQLite3)
+- **WAL Mode**: Enabled for concurrent read/write
+- **Prepared Statements**: All database operations
+- **Indexing**: Proper indexes for analytics queries
+- **Transactions**: Batch operations for performance
+- **Migrations**: Version-controlled schema changes
+
+### API Design Principles
+- **Validation**: Joi or similar for input validation
+- **Rate Limiting**: Express-rate-limit middleware
+- **CORS**: Configurable origins via environment
+- **Security**: Helmet.js for security headers
+- **Authentication**: JWT-based for admin operations
+- **Pagination**: Cursor-based for large datasets
+
+### Frontend Architecture
+- **Progressive Enhancement**: Works without JavaScript
+- **Responsive Design**: Mobile-first with CSS Grid/Flexbox
+- **Component-Based**: Reusable UI components
+- **State Management**: Event-driven with custom events
+- **Performance**: Lazy loading and code splitting
+
+## 🧪 TESTING REQUIREMENTS
+
+### Test Coverage Expectations
+- **Unit Tests**: 80%+ coverage for business logic
+- **Integration Tests**: API endpoints with real database
+- **E2E Tests**: Critical user journeys
+- **Performance Tests**: Load testing for high traffic
+- **Security Tests**: SQL injection, XSS prevention
+
+### Test Commands
+```bash
+npm test                    # Run all tests
+npm run test:unit          # Unit tests only
+npm run test:integration   # Integration tests
+npm run test:e2e          # End-to-end tests
+npm run test:coverage     # Coverage report
+npm run test:security     # Security vulnerability scan
+```
+
+## 🚀 DEPLOYMENT CONFIGURATION
+
+### Environment Variables (Production)
+```bash
+# Server Configuration
+NODE_ENV=production
+PORT=3000
+DATABASE_PATH=/data/ads.db
+
+# Authentication & Security
+JWT_SECRET=your-secure-jwt-secret
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=secure-password
+RATE_LIMIT_REQUESTS=1000
+RATE_LIMIT_WINDOW_MS=60000
+
+# Google Ad Manager Integration
+GOOGLE_AD_MANAGER_NETWORK_ID=123456789
+GOOGLE_AD_MANAGER_API_KEY=your-api-key
+
+# Analytics & Monitoring
+GEOIP_LICENSE_KEY=your-maxmind-license
+ANALYTICS_RETENTION_DAYS=90
+MONITORING_ENABLED=true
+
+# External Services
+REDIS_URL=redis://localhost:6379
+ELASTICSEARCH_URL=http://localhost:9200
+```
+
+### Deployment Targets
+- **Kubernetes**: Production-ready with auto-scaling
+- **Docker Compose**: Development and staging
+- **Cloud Platforms**: AWS EKS, GCP GKE, Azure AKS
+- **Edge Deployment**: Cloudflare Workers, Vercel Edge
+
+## 🔒 SECURITY GUIDELINES
+
+### Security Requirements (NON-NEGOTIABLE)
+- **Input Validation**: All user inputs validated and sanitized
+- **SQL Injection Prevention**: Prepared statements only
+- **XSS Protection**: Content Security Policy headers
+- **CSRF Protection**: CSRF tokens for state-changing operations
+- **Rate Limiting**: Per-IP and per-user limits
+- **Authentication**: Strong password policies and JWT security
+- **Logging**: Security events logged for audit
+
+### Security Implementation Patterns
+```javascript
+// Input validation example
+const Joi = require('joi');
+const schema = Joi.object({
+  campaignName: Joi.string().min(3).max(100).required(),
+  budget: Joi.number().positive().required()
+});
+
+// Prepared statement example
+const stmt = db.prepare('SELECT * FROM campaigns WHERE id = ?');
+const campaign = stmt.get(campaignId);
+```
+
+## 📊 FEATURE IMPLEMENTATION GUIDELINES
+
+### Google Ad Manager Integration
+- **GPT Library**: Use latest Google Publisher Tag
+- **Ad Sizes**: Support IAB standard sizes + custom
+- **Targeting**: Geographic, demographic, behavioral
+- **Reporting**: Integration with Google Analytics
+- **Preview Mode**: Testing environment for ads
+
+### Analytics Implementation
+- **Real-time**: WebSocket updates for live metrics
+- **Batch Processing**: Efficient data aggregation
+- **Data Retention**: Configurable retention policies
+- **Export Formats**: CSV, JSON, PDF reports
+- **Privacy Compliance**: GDPR/CCPA compliant tracking
+
+### Campaign Management
+- **CRUD Operations**: Full lifecycle management
+- **Scheduling**: Start/end date automation
+- **Targeting**: Audience segmentation
+- **Budget Management**: Spend tracking and limits
+- **A/B Testing**: Variant testing capabilities
+
+## 🔧 DEVELOPMENT WORKFLOW
+
+### Local Development Setup
+```bash
+# Clone and setup
+git clone <repository>
+cd lite-ad-server-with-agents
+cp .env.example .env
+npm ci
+
+# Start development
+npm run dev              # Development server with hot reload
+npm run docker:dev       # Docker development environment
+npm run test:watch       # Tests in watch mode
+```
+
+### Code Quality Checklist
+Before any commit or pull request:
+```bash
+npm run lint            # ESLint check
+npm run test           # All tests pass
+npm run build          # Production build successful
+npm run docker:build   # Docker image builds
+npm run security       # Security vulnerability scan
+```
+
+## 🎯 CURSOR AI AGENT INSTRUCTIONS
+
+### When Working on This Project:
+
+1. **Context Awareness**: This is a production-ready enterprise ad server, not a simple prototype
+2. **Quality Standards**: Maintain A+ code quality with zero ESLint errors
+3. **Architecture Consistency**: Follow established MVC patterns and conventions
+4. **Security First**: Always implement proper validation and security measures
+5. **Performance Optimization**: Consider scalability in all implementations
+6. **Test Coverage**: Write tests for any new functionality
+7. **Documentation**: Update relevant documentation for changes
+
+### Preferred Patterns:
+- **Error Handling**: Use try-catch with proper error responses
+- **Database Operations**: Always use prepared statements
+- **API Design**: RESTful with proper HTTP status codes
+- **Async Operations**: Prefer async/await over promises
+- **Configuration**: Environment variables for all configurable values
+
+### Avoid These Patterns:
+- String concatenation for SQL queries
+- Blocking synchronous operations
+- Hard-coded configuration values
+- Missing input validation
+- Inconsistent error response formats
+
+## 📚 REFERENCE DOCUMENTATION
+
+### Modern Cursor Project Rules
+- [.cursor/rules/global.mdc](./.cursor/rules/global.mdc) - This file - Main AI rules
+- [.cursor/rules/technologystack.md](./.cursor/rules/technologystack.md) - Technology stack details
+- [.cursor/rules/directorystructure.md](./.cursor/rules/directorystructure.md) - Project structure
+- [.cursor/rules/example.mdc](./.cursor/rules/example.mdc) - Code examples and patterns
+
+### Internal Documentation
+- [AGENTS.md](./AGENTS.md) - Detailed Codex instructions
+- [CONVERSATION_SUMMARY.md](./CONVERSATION_SUMMARY.md) - Complete project history
+- [PROJECT_STATE_TRACKING.md](./PROJECT_STATE_TRACKING.md) - Current status dashboard
+- [BUILD_ARCHITECTURE_GUIDE.md](./BUILD_ARCHITECTURE_GUIDE.md) - Technical architecture
+- [MEMORY_CONTEXT_SYSTEM.md](./MEMORY_CONTEXT_SYSTEM.md) - Context management
+- [CONTEXT_CHECKLIST.md](./CONTEXT_CHECKLIST.md) - Quick reference guide
+
+### Core Project Files
+- [package.json](./package.json) - Dependencies and scripts
+- [src/server.js](./src/server.js) - Express server entry point
+- [src/config.js](./src/config.js) - Database configuration
+- [src/routes/](./src/routes/) - API route handlers
+- [test/](./test/) - Test suite
+- [k8s/](./k8s/) - Kubernetes deployment configs
+- [.github/workflows/](.//.github/workflows/) - CI/CD pipelines
+
+## 🎛️ CURSOR IDE SPECIFIC INSTRUCTIONS
+
+### File Navigation & Context
+- **Documentation First**: Always read relevant documentation files before making changes
+- **Project Structure**: Use the file tree in the sidebar to navigate between components
+- **Context Awareness**: Reference documentation files for quick status checks
+- **Testing**: Run tests using the integrated terminal before code changes
+
+### Recommended Workflow in Cursor IDE
+1. **Start Here**: Open PROJECT_STATE_TRACKING.md for current status
+2. **Architecture Review**: Check BUILD_ARCHITECTURE_GUIDE.md for technical details
+3. **Code Standards**: Follow patterns in AGENTS.md for implementation
+4. **Testing**: Use `Ctrl+Shift+`` to open terminal and run `npm test`
+5. **Quality Check**: Run `npm run lint` before committing changes
+
+### Key Keyboard Shortcuts for This Project
+- `Ctrl+P` - Quick file search (use for documentation files)
+- `Ctrl+Shift+F` - Global search across project
+- `Ctrl+`` - Toggle integrated terminal
+- `F12` - Go to definition (useful for API routes)
+- `Shift+F12` - Find all references
+
+## 🚨 CRITICAL REMINDERS
+
+### Project State
+- **This is NOT a new project** - it's 95% complete with enterprise features
+- **6 major development phases completed** - all core functionality implemented
+- **Production deployment ready** - Kubernetes configs and CI/CD in place
+- **Comprehensive test coverage** - all tests currently passing
+
+### Next Phase Considerations
+- Performance optimization and monitoring
+- Advanced targeting and personalization
+- Machine learning integration for ad optimization
+- Multi-tenant support for enterprise clients
+- Advanced reporting and business intelligence
+
+### Quality Gates
+- All code changes must pass existing test suite
+- New features require comprehensive test coverage
+- Security review required for authentication/authorization changes
+- Performance impact assessment for core ad serving paths
+
+---
+
+**Remember**: This is a sophisticated, production-ready ad management platform. Treat it with the care and attention appropriate for enterprise software that handles real advertising campaigns and revenue.
