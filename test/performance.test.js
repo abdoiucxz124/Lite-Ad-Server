@@ -8,13 +8,13 @@ let app;
 describe('Performance Tests', () => {
   before(() => {
     process.env.DATABASE_PATH = ':memory:';
-    app = require('../src/server').app;
+    app = require('../src/server');
   });
 
   test('ad endpoint handles load quickly', async () => {
     const startMem = process.memoryUsage().heapUsed;
     const start = performance.now();
-    const requests = Array.from({ length: 20 }, () => 
+    const requests = Array.from({ length: 20 }, () =>
       request(app).get('/api/ad').query({ slot: 'load-slot' })
     );
     await Promise.all(requests);

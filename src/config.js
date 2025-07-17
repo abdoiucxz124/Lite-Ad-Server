@@ -117,6 +117,48 @@ try {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Admin management tables
+    CREATE TABLE IF NOT EXISTS ad_formats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      type TEXT NOT NULL,
+      default_settings JSON,
+      is_active BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ad_campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      format_id INTEGER,
+      status TEXT DEFAULT 'draft',
+      start_date DATETIME,
+      end_date DATETIME,
+      targeting JSON,
+      settings JSON,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (format_id) REFERENCES ad_formats(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ad_creatives (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER,
+      name TEXT NOT NULL,
+      content TEXT,
+      settings JSON,
+      status TEXT DEFAULT 'draft',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id)
+    );
+
+    -- Insert default ad formats for testing and admin interface
+    INSERT OR IGNORE INTO ad_formats (id, name, type, default_settings, is_active) VALUES
+      (1, 'Banner', 'banner', '{"width": 728, "height": 90}', 1),
+      (2, 'PushDown', 'pushdown', '{"expand_height": 400, "animation": "slide"}', 1),
+      (3, 'Interstitial', 'interstitial', '{"display_time": 5000, "closeable": true}', 1),
+      (4, 'Popup', 'popup', '{"width": 400, "height": 300, "modal": true}', 1),
+      (5, 'Interscroller', 'interscroller', '{"trigger_scroll": 50, "parallax": true}', 1);
+
     -- Indexes for basic analytics
     CREATE INDEX IF NOT EXISTS idx_analytics_slot ON analytics(slot);
     CREATE INDEX IF NOT EXISTS idx_analytics_event ON analytics(event);
@@ -203,7 +245,23 @@ const statements = {
     FROM analytics
     GROUP BY slot
     ORDER BY impressions DESC
-  `)
+  `),
+
+  // Admin API prepared statements
+  getFormats: db.prepare('SELECT * FROM ad_formats ORDER BY name'),
+  insertFormat: db.prepare('INSERT INTO ad_formats (name, type, default_settings, is_active) VALUES (?, ?, ?, ?)'),
+  updateFormat: db.prepare('UPDATE ad_formats SET name = ?, type = ?, default_settings = ?, is_active = ? WHERE id = ?'),
+  deleteFormat: db.prepare('DELETE FROM ad_formats WHERE id = ?'),
+
+  getCampaigns: db.prepare('SELECT * FROM ad_campaigns ORDER BY created_at DESC'),
+  insertCampaign: db.prepare('INSERT INTO ad_campaigns (name, format_id, status, start_date, end_date, targeting, settings) VALUES (?, ?, ?, ?, ?, ?, ?)'),
+  updateCampaign: db.prepare('UPDATE ad_campaigns SET name = ?, format_id = ?, status = ?, start_date = ?, end_date = ?, targeting = ?, settings = ? WHERE id = ?'),
+  deleteCampaign: db.prepare('DELETE FROM ad_campaigns WHERE id = ?'),
+
+  getCreatives: db.prepare('SELECT * FROM ad_creatives WHERE campaign_id = ? ORDER BY created_at DESC'),
+  insertCreative: db.prepare('INSERT INTO ad_creatives (campaign_id, name, content, settings, status) VALUES (?, ?, ?, ?, ?)'),
+  updateCreative: db.prepare('UPDATE ad_creatives SET name = ?, content = ?, settings = ?, status = ? WHERE id = ?'),
+  deleteCreative: db.prepare('DELETE FROM ad_creatives WHERE id = ?')
 };
 
 // Graceful shutdown

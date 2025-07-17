@@ -74,16 +74,18 @@ router.post('/api/campaigns', (req, res) => {
     if (!name || !formatId) {
       return res.status(400).json({ error: 'name and format_id required' });
     }
-    const result = statements.insertCampaign.run({
+    const result = statements.insertCampaign.run(
       name,
-      format_id: formatId,
-      targeting_settings: JSON.stringify(req.body.targeting_settings || {}),
-      schedule_settings: JSON.stringify(req.body.schedule_settings || {}),
-      budget_settings: JSON.stringify(req.body.budget_settings || {}),
-      status: req.body.status || 'draft'
-    });
+      formatId,
+      req.body.status || 'draft',
+      req.body.start_date || null,
+      req.body.end_date || null,
+      JSON.stringify(req.body.targeting || {}),
+      JSON.stringify(req.body.settings || {})
+    );
     res.json({ id: result.lastInsertRowid });
   } catch (error) {
+    console.error('Campaign creation error:', error);
     res.status(500).json({ error: 'Failed to create campaign' });
   }
 });
@@ -332,7 +334,7 @@ router.post('/api/generate-tag', (req, res) => {
   }
 });
 
-function generateUniversalTag (config) {
+function generateUniversalTag(config) {
   return `\n<!-- Lite Ad Server Universal Tag -->\n<div class="lite-ad-container" \n     data-lite-ad\n     data-format="${config.format}"\n     data-size="${config.size}"\n     data-placement="${config.placement}"\n     data-targeting='${JSON.stringify(config.targeting)}'\n     data-scheduling='${JSON.stringify(config.scheduling)}'\n     data-frequency='${JSON.stringify(config.frequency)}'>\n  <script>\n    (function() {\n      window.LiteAdConfig = window.LiteAdConfig || {\n        apiEndpoint: '${process.env.API_ENDPOINT || 'http://localhost:3000'}',\n        siteId: '${config.siteId}',\n        debug: false\n      };\n      if (!window.LiteAdSDK) {\n        var script = document.createElement('script');\n        script.src = '${process.env.API_ENDPOINT || 'http://localhost:3000'}/ad-sdk.js';\n        script.async = true;\n        document.head.appendChild(script);\n      } else {\n        window.LiteAdSDK.loadAd(document.currentScript.parentElement);\n      }\n    })();\n  </script>\n</div>\n<!-- End Lite Ad Server Tag -->\n  `;
 }
 

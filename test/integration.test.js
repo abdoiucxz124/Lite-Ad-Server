@@ -8,7 +8,7 @@ describe('Integration Tests', () => {
   before(() => {
     process.env.DATABASE_PATH = ':memory:';
     process.env.ADMIN_PASSWORD = '';
-    app = require('../src/server').app;
+    app = require('../src/server');
   });
 
   test('GET /health returns ok', async () => {
