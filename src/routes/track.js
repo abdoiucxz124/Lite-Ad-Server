@@ -1,197 +1,89 @@
 const express = require('express');
 const router = express.Router();
 const { statements } = require('../config');
+const AnalyticsEngine = require('../analytics-engine');
 
-// Validation helpers
-const validateTrackingData = (data) => {
-  const { slot, event } = data;
-
-  if (!slot || typeof slot !== 'string') {
-    return { valid: false, error: 'Slot parameter is required and must be a string' };
+const validateEnhancedTrackingData = (data) => {
+  if (!data.event || !data.slot) {
+    return { valid: false, error: 'Event and slot are required' };
   }
-
-  if (!event || typeof event !== 'string') {
-    return { valid: false, error: 'Event parameter is required and must be a string' };
-  }
-
-  const allowedEvents = ['impression', 'click', 'viewable', 'loaded'];
-  if (!allowedEvents.includes(event.toLowerCase())) {
-    return { valid: false, error: `Event must be one of: ${allowedEvents.join(', ')}` };
-  }
-
   return { valid: true };
 };
 
-// Extract client information
-const extractClientInfo = (req) => {
-  return {
-    ip: req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || 'unknown',
-    userAgent: req.headers['user-agent'] || '',
-    referer: req.headers.referer || req.headers.referrer || '',
-    timestamp: new Date().toISOString()
-  };
-};
+const updateRealTimeAggregates = () => ({ });
+const triggerRevenueOptimization = () => {};
+const getActiveOptimizations = () => [];
 
-// POST /api/track - Track ad events
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { slot, event } = req.body;
-
-    // Validate input data
-    const validation = validateTrackingData({ slot, event });
-    if (!validation.valid) {
-      return res.status(400).json({ error: validation.error });
+    const { event, format, slot, adId, metadata = {}, revenue = 0, userId, sessionId, geo, device, abTestId, variant } = req.body;
+    const validationResult = validateEnhancedTrackingData(req.body);
+    if (!validationResult.valid) {
+      return res.status(400).json({ error: validationResult.error });
     }
-
-    // Extract client information
-    const clientInfo = extractClientInfo(req);
-
-    // Insert tracking data
-    try {
-      const result = statements.insertAnalytics.run(
-        slot,
-        event.toLowerCase(),
-        clientInfo.userAgent,
-        clientInfo.ip,
-        clientInfo.referer
-      );
-
-      console.log(`📊 Tracked ${event} for slot: ${slot} (ID: ${result.lastInsertRowid})`);
-
-      res.json({
-        success: true,
-        id: result.lastInsertRowid,
-        timestamp: clientInfo.timestamp
-      });
-    } catch (dbError) {
-      console.error('Database error while tracking event:', dbError);
-      res.status(500).json({
-        error: 'Failed to save tracking data',
-        message: process.env.NODE_ENV === 'development' ? dbError.message : undefined
-      });
+    const trackingId = statements.enhancedTracking.insert.run(
+      event, format, slot, adId, revenue, userId, sessionId,
+      geo?.country, geo?.region, device?.type, device?.os,
+      req.headers['user-agent'] || '', abTestId, variant,
+      req.ip, req.headers['user-agent'] || '', req.headers.referer || '',
+      req.body.pageUrl || '', req.body.viewportWidth || null,
+      req.body.viewportHeight || null, JSON.stringify(metadata)
+    );
+    const aggregatedData = updateRealTimeAggregates(req.body);
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('analytics-update', { event: req.body, aggregates: aggregatedData, timestamp: Date.now() });
     }
+    if (revenue > 0) triggerRevenueOptimization(req.body);
+    res.json({ success: true, trackingId, optimizations: getActiveOptimizations(slot, format) });
   } catch (error) {
-    console.error('Error in tracking route:', error);
-    res.status(500).json({
-      error: 'Internal tracking error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('Enhanced tracking error:', error);
+    res.status(500).json({ error: 'Tracking failed' });
   }
 });
 
-// GET /api/track/pixel - 1x1 tracking pixel for impression tracking
+router.get('/api/revenue-insights', (req, res) => {
+  const engine = new AnalyticsEngine(statements);
+  const insights = engine.generateRevenueInsights();
+  res.json({ insights });
+});
+
+router.post('/api/ab-test', (req, res) => {
+  const engine = new AnalyticsEngine(statements);
+  const test = engine.createABTest(req.body);
+  res.json({ test });
+});
+
+router.get('/api/ab-test/:id/results', (req, res) => {
+  const engine = new AnalyticsEngine(statements);
+  const results = engine.analyzeABTestResults(req.params.id);
+  res.json({ results });
+});
+
 router.get('/pixel', (req, res) => {
-  try {
-    const { slot } = req.query;
-
-    if (slot) {
-      const validation = validateTrackingData({ slot, event: 'impression' });
-      if (validation.valid) {
-        const clientInfo = extractClientInfo(req);
-
-        try {
-          statements.insertAnalytics.run(
-            slot,
-            'impression',
-            clientInfo.userAgent,
-            clientInfo.ip,
-            clientInfo.referer
-          );
-          console.log(`📊 Pixel tracked impression for slot: ${slot}`);
-        } catch (dbError) {
-          console.error('Database error in pixel tracking:', dbError);
-        }
-      }
-    }
-
-    // Return 1x1 transparent pixel
-    const pixel = Buffer.from([
-      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00,
-      0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x00,
-      0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02,
-      0x04, 0x01, 0x00, 0x3b
-    ]);
-
-    res.set({
-      'Content-Type': 'image/gif',
-      'Content-Length': pixel.length,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      Pragma: 'no-cache',
-      Expires: '0'
-    });
-
-    res.send(pixel);
-  } catch (error) {
-    console.error('Error in pixel tracking:', error);
-    // Always return pixel even on error
-    res.status(200).send(Buffer.alloc(1));
-  }
+  const pixel = Buffer.from([0x47,0x49,0x46,0x38,0x39,0x61,0x01,0x00,0x01,0x00,0x80,0x00,0x00,0xff,0xff,0xff,0x00,0x00,0x00,0x21,0xf9,0x04,0x01,0x00,0x00,0x00,0x00,0x2c,0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x02,0x02,0x04,0x01,0x00,0x3b]);
+  res.set({'Content-Type':'image/gif','Content-Length':pixel.length,'Cache-Control':'no-cache, no-store, must-revalidate'});
+  res.send(pixel);
 });
 
-// POST /api/track/batch - Batch tracking for multiple events
 router.post('/batch', (req, res) => {
-  try {
-    const { events } = req.body;
-
-    if (!Array.isArray(events) || events.length === 0) {
-      return res.status(400).json({ error: 'Events array is required and must not be empty' });
-    }
-
-    if (events.length > 100) {
-      return res.status(400).json({ error: 'Too many events. Maximum 100 events per batch' });
-    }
-
-    const clientInfo = extractClientInfo(req);
-    const results = [];
-    const errors = [];
-
-    // Process each event
-    for (let i = 0; i < events.length; i++) {
-      const eventData = events[i];
-      const validation = validateTrackingData(eventData);
-
-      if (!validation.valid) {
-        errors.push({ index: i, error: validation.error, event: eventData });
-        continue;
-      }
-
+  const { events = [] } = req.body;
+  const clientInfo = { ua: req.headers['user-agent'], ip: req.ip, referer: req.headers.referer };
+  const results = [];
+  events.slice(0,100).forEach(evt=>{
+    if (evt.slot && evt.event) {
       try {
-        const result = statements.insertAnalytics.run(
-          eventData.slot,
-          eventData.event.toLowerCase(),
-          clientInfo.userAgent,
-          clientInfo.ip,
-          clientInfo.referer
+        statements.enhancedTracking.insert.run(
+          evt.event, evt.format, evt.slot, evt.adId, evt.revenue || 0, evt.userId,
+          evt.sessionId, null, null, null, null, clientInfo.ua, evt.abTestId,
+          evt.variant, clientInfo.ip, clientInfo.ua, clientInfo.referer,
+          evt.pageUrl || '', evt.viewportWidth || null, evt.viewportHeight || null,
+          JSON.stringify(evt.metadata || {})
         );
-
-        results.push({
-          index: i,
-          id: result.lastInsertRowid,
-          slot: eventData.slot,
-          event: eventData.event
-        });
-      } catch (dbError) {
-        errors.push({ index: i, error: dbError.message, event: eventData });
-      }
-    }
-
-    console.log(`📊 Batch tracked ${results.length} events, ${errors.length} errors`);
-
-    res.json({
-      success: true,
-      processed: results.length,
-      error_count: errors.length,
-      results,
-      errors: errors.length > 0 ? errors : undefined,
-      timestamp: clientInfo.timestamp
-    });
-  } catch (error) {
-    console.error('Error in batch tracking:', error);
-    res.status(500).json({
-      error: 'Batch tracking failed',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+        results.push(true);
+      } catch { results.push(false); }
+    } else { results.push(false); }
+  });
+  res.json({ success: true, processed: results.filter(Boolean).length });
 });
 
 module.exports = router;
