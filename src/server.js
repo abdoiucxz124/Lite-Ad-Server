@@ -9,8 +9,10 @@ const { metricsMiddleware, getMetrics } = require('./monitoring');
 const adRoutes = require('./routes/ad');
 const trackRoutes = require('./routes/track');
 const adminRoutes = require('./routes/admin');
+const { initializeAdFormats } = require('./config');
 
 const app = express();
+initializeAdFormats();
 
 // Metrics middleware
 if (process.env.ENABLE_METRICS === 'true') {
